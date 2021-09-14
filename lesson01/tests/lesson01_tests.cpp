@@ -9,6 +9,11 @@
 // в папку: cmake-build-debug/lesson01
 
 
+
+//NOT SURE WHETHER IT WORKS, JETBRAINS STILL HASN'T ANSWERED TO MY CLION LICENSE APPLICATION
+
+
+
 TEST(lesson01, fib0) {
     GTEST_ASSERT_EQ(fibbonachiRecursive(0), 0);
 }
@@ -36,6 +41,7 @@ TEST(lesson01, fib10) {
 TEST(lesson01, fib100) {
 //    fibbonachiRecursive(100); // TODO 05 обратите внимание что рекурсивный Фибоначчи очень медленный, переделайте его на быстрый вариант, замените его здесь и убедитесь что стало быстрее
 //    fibbonachiFast(100);
+    GTEST_ASSERT_EQ(fibbonachiRecursive(100), ((double)354224848179262000000));
 }
 
 TEST(lesson01, findX1) {
@@ -70,10 +76,38 @@ TEST(lesson01, findX6) {
 
 // TODO 21 добавьте много тестов которые проверят работу поиска квадратных корней для всех случаев
 TEST(lesson01, solveSquare1) {
-    // 0*x^2 + 4*x - 6 = 0
     std::vector<double> xs = solveSquare(0.0, 4.0, -6.0);
-    GTEST_ASSERT_EQ(xs.size(), 1); // сверяем что найден ровно один корень
+    GTEST_ASSERT_EQ(xs.size(), 1);
     double x0 = xs[0];
-    GTEST_ASSERT_EQ(x0, 1.5); // сверяем что найденный корень правильный
+    GTEST_ASSERT_EQ(x0, 1.5);
 }
 
+TEST(lesson01, solveSquare2) {
+    std::vector<double> xs = solveSquare(0.0, 0.0, -6.0);
+    GTEST_ASSERT_EQ(xs.size(), 0);
+}
+
+/*TEST(lesson01, solveSquare3) {
+    std::vector<double> xs = solveSquare(0.0, 0.0, 0.0);
+    GTEST_ASSERT_EQ(xs.size(), 0);
+}*/
+
+TEST(lesson01, solveSquare3) {
+    std::vector<double> xs = solveSquare(1.0, 1.0, 1.0);
+    GTEST_ASSERT_EQ(xs.size(), 0);
+}
+
+TEST(lesson01, solveSquare4) {
+    std::vector<double> xs = solveSquare(1.0, 0.0, 0.0);
+    GTEST_ASSERT_EQ(xs.size(), 1);
+    double x0 = xs[0];
+    GTEST_ASSERT_EQ(x0, 0);
+}
+TEST(lesson01, solveSquare5) {
+    std::vector<double> xs = solveSquare(1.0, 0.0, -1.0);
+    GTEST_ASSERT_EQ(xs.size(), 2);
+    double x0 = xs[0];
+    double x1 = xs[1];
+    GTEST_ASSERT_EQ(x0, -1);
+    GTEST_ASSERT_EQ(x1, 1);
+}

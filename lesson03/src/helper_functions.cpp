@@ -2,27 +2,37 @@
 
 #include <libutils/rasserts.h>
 
+using namespace cv;
+using namespace std;
 
 cv::Mat makeAllBlackPixelsBlue(cv::Mat image) {
     // TODO реализуйте функцию которая каждый черный пиксель картинки сделает синим
 
-    // ниже приведен пример как узнать цвет отдельного пикселя - состоящий из тройки чисел BGR (Blue Green Red)
-    // чем больше значение одного из трех чисел - тем насыщеннее его оттенок
-    // всего их диапазон значений - от 0 до 255 включительно
-    // т.е. один байт, поэтому мы используем ниже тип unsigned char - целое однобайтовое неотрицательное число
-    cv::Vec3b color = image.at<cv::Vec3b>(13, 5); // взяли и узнали что за цвет в пикселе в 14-ом ряду (т.к. индексация с нуля) и 6-ой колонке
-    unsigned char blue = color[0]; // если это число равно 255 - в пикселе много синего, если равно 0 - в пикселе нет синего
-    unsigned char green = color[1];
-    unsigned char red = color[2];
-
-    // как получить белый цвет? как получить черный цвет? как получить желтый цвет?
-    // поэкспериментируйте! например можете всю картинку заполнить каким-то одним цветом
-
-    // пример как заменить цвет по тем же координатам
-    red = 255;
-    // запустите эту версию функции и посмотрите на получившуюся картинку - lesson03/resultsData/01_blue_unicorn.jpg
-    // какой пиксель изменился? почему он не чисто красный?
-    image.at<cv::Vec3b>(13, 5) = cv::Vec3b(blue, green, red);
+    for(int i = 0; i<image.rows; i++){
+        for(int j = 0; j<image.cols; j++){
+            Vec3b color = image.at<Vec3b>(i, j);
+            if(color[0]<=3 && color[1]<=3 && color[2]<=3){
+                image.at<Vec3b>(i, j) = Vec3b(255, 0, 0);
+            }
+        }
+    }
+//
+//    // ниже приведен пример как узнать цвет отдельного пикселя - состоящий из тройки чисел BGR (Blue Green Red)
+//    // чем больше значение одного из трех чисел - тем насыщеннее его оттенок
+//    // всего их диапазон значений - от 0 до 255 включительно
+//    // т.е. один байт, поэтому мы используем ниже тип unsigned char - целое однобайтовое неотрицательное число
+//    cv::Vec3b color = image.at<cv::Vec3b>(13, 5); // взяли и узнали что за цвет в пикселе в 14-ом ряду (т.к. индексация с нуля) и 6-ой колонке
+//    unsigned char blue = color[0]; // если это число равно 255 - в пикселе много синего, если равно 0 - в пикселе нет синего
+//    unsigned char green = color[1];
+//    unsigned char red = color[2];
+//    // как получить белый цвет? как получить черный цвет? как получить желтый цвет?
+//    // поэкспериментируйте! например можете всю картинку заполнить каким-то одним цветом
+//
+//    // пример как заменить цвет по тем же координатам
+//    red = 255;
+//    // запустите эту версию функции и посмотрите на получившуюся картинку - lesson03/resultsData/01_blue_unicorn.jpg
+//    // какой пиксель изменился? почему он не чисто красный?
+//    image.at<cv::Vec3b>(13, 5) = cv::Vec3b(blue, green, red);
 
     return image;
 }
@@ -31,7 +41,12 @@ cv::Mat invertImageColors(cv::Mat image) {
     // TODO реализуйте функцию которая каждый цвет картинки инвертирует:
     // т.е. пусть ночь станет днем, а сумрак рассеется
     // иначе говоря замените каждое значение яркости x на (255-x) (т.к находится в диапазоне от 0 до 255)
-
+    for(int i = 0; i<image.rows; i++){
+        for(int j = 0; j<image.cols; j++){
+            Vec3b color = image.at<Vec3b>(i, j);
+            image.at<Vec3b>(i, j) = Vec3b(255-color[0], 255-color[1], 255-color[2]);
+        }
+    }
     return image;
 }
 
@@ -40,7 +55,18 @@ cv::Mat addBackgroundInsteadOfBlackPixels(cv::Mat object, cv::Mat background) {
     // т.е. что-то вроде накладного фона получится
 
     // гарантируется что размеры картинок совпадают - проверьте это через rassert, вот например сверка ширины:
-    rassert(object.cols == background.cols, 341241251251351);
+    rassert(object.cols == background.cols, "pictures are not of equal size");
+    rassert(object.rows == background.rows, "pictures are not of equal size");
+
+    for(int i = 0; i<object.rows; i++){
+        for(int j = 0; j<object.cols; j++){
+            Vec3b color = object.at<Vec3b>(i, j);
+            if(color[0]<=3 && color[1]<=3 && color[2]<=3){
+                Vec3b color1 = background.at<Vec3b>(i, j);
+                object.at<Vec3b>(i, j) = Vec3b(color1[0], color1[1], color1[2]);
+            }
+        }
+    }
 
     return object;
 }

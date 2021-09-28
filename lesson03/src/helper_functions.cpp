@@ -1,18 +1,22 @@
 #include "helper_functions.h"
-
+#include<iostream>
+#include <random>
 #include <libutils/rasserts.h>
 
 using namespace cv;
 using namespace std;
-
-cv::Mat makeAllBlackPixelsBlue(cv::Mat image) {
+mt19937 rnd(time(NULL));
+cv::Mat makeAllBlackPixelsBlue(cv::Mat image, bool randomly) {
     // TODO реализуйте функцию которая каждый черный пиксель картинки сделает синим
-
+    Vec3b newCol = Vec3b(rnd()%256, rnd()%256, rnd()%256);
     for(int i = 0; i<image.rows; i++){
         for(int j = 0; j<image.cols; j++){
             Vec3b color = image.at<Vec3b>(i, j);
             if(color[0]<=3 && color[1]<=3 && color[2]<=3){
-                image.at<Vec3b>(i, j) = Vec3b(255, 0, 0);
+                if(!randomly)
+                    image.at<Vec3b>(i, j) = Vec3b(255, 0, 0);
+                else
+                    image.at<Vec3b>(i, j) = newCol;
             }
         }
     }
@@ -71,10 +75,45 @@ cv::Mat addBackgroundInsteadOfBlackPixels(cv::Mat object, cv::Mat background) {
     return object;
 }
 
-cv::Mat addBackgroundInsteadOfBlackPixelsLargeBackground(cv::Mat object, cv::Mat largeBackground) {
+cv::Mat addBackgroundInsteadOfBlackPixelsLargeBackground(cv::Mat object, cv::Mat largeBackground, bool randomly) {
     // теперь вам гарантируется что largeBackground гораздо больше - добавьте проверок этого инварианта (rassert-ов)
-
+    pair<int, int> vec;
+    if(randomly){
+        vec.first = rnd()%(largeBackground.rows-object.rows-2);
+        vec.second = rnd()%(largeBackground.cols-object.cols-2);
+    } else {
+        vec.first = largeBackground.rows/2-object.rows/2;
+        vec.second = largeBackground.cols/2-object.cols/2;
+    }
+    rassert(largeBackground.cols>object.cols+3 && largeBackground.rows>object.rows+3, "background too small")
     // TODO реализуйте функцию так, чтобы нарисовался объект ровно по центру на данном фоне, при этом черные пиксели объекта не должны быть нарисованы
-
+    for(int i = 0; i<object.rows; i++){
+        for(int j = 0; j<object.cols; j++){
+            Vec3b color = object.at<Vec3b>(i, j);
+            if(color[0]>3 || color[1]>3 || color[2]>3){
+                Vec3b color1 = object.at<Vec3b>(i, j);
+                largeBackground.at<Vec3b>(i+vec.first, j+vec.second) = Vec3b(color1[0], color1[1], color1[2]);
+            }
+        }
+    }
     return largeBackground;
+}
+
+
+cv::Mat manyObjects(cv::Mat object, cv::Mat largeBackground) {
+    int cnt = rnd()%100+1;
+    for(int i = 0; i<cnt; i++){
+        addBackgroundInsteadOfBlackPixelsLargeBackground(object.clone(), largeBackground, true);
+    }
+    return largeBackground;
+}
+
+cv::Mat bigObject(cv::Mat object, cv::Mat largeBackground){
+    Mat newObject = largeBackground.clone();
+    for(int i = 0; i<newObject.rows; i++){
+        for(int j = 0; j<newObject.cols; j++){
+            newObject.at<Vec3b>(i, j) = object.at<Vec3b>((int)((((double)i)*object.rows)/newObject.rows), (int)((((double)j)*object.cols)/newObject.cols));
+        }
+    }
+    return addBackgroundInsteadOfBlackPixels(newObject, largeBackground);
 }

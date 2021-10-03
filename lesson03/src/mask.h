@@ -4,7 +4,16 @@
 
 using namespace cv;
 
-struct Mask;
+struct Mask{
+    bool** a;
+    int n, m;
+
+    Mask();
+
+    Mask(int _n, int _m);
+
+    Mat use(Mat image, Mat background);
+};
 
 //Mask expand(Mask mask, int r, bool inv, int numb);
 

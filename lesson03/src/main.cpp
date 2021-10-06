@@ -43,11 +43,14 @@ void task4() {
         bool isSuccess = video.read(content.frame);
         rassert(isSuccess, 348792347819);
         rassert(!content.frame.empty(), 3452314124643);
-        Mask mask = createMask(content.frame.clone(), base.clone());
+        Mask mask = createMask(content.frame.clone(), base.clone(), true, 0.15);
         Mat res = mask.use(content.frame.clone(), background);
 
+        Mask mask0 = createMask(content.frame.clone(), base.clone(), false, 15);
+        Mat res0 = mask0.use(content.frame.clone(), background);
 
         cv::imshow("video", res);
+        cv::imshow("video_basic", res0);
 
         int key = cv::waitKey(10);
         if(key==27 || key==32)

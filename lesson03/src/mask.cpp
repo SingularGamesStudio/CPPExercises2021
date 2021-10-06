@@ -87,7 +87,7 @@ Mask expand(Mask mask, int r, bool exp1, int numNeed){
     return nw;
 }
 
-Mask createMask(Mat image, Mat background){
+Mask createMask(Mat image, Mat background, bool normalized, double treshold){
     rassert(image.rows==background.rows && image.cols==background.cols, "image size not equal to background");
     Mask res = Mask(image.rows, image.cols);
     double norm1 = norm(image);
@@ -98,18 +98,26 @@ Mask createMask(Mat image, Mat background){
             for(int di = -1; di<2; di++){
                 for(int dj = -1; dj<2; dj++){
                     if(i+di>=0 && i+di<background.rows && j+dj>=0 && j+dj<background.cols){
-                        Vec3b c1 = background.at<Vec3b>(i, j);
-                        Vec3b c2 = image.at<Vec3b>(i+di, j+dj);
-                        double color1[3];
-                        double color2[3];
-                        color1[0] = c1[0]/norm1;
-                        color1[1]=c1[1]/norm1;
-                        color1[2]=c1[2]/norm1;
-                        color2[0] = c2[0]/norm1;
-                        color2[1]=c2[1]/norm1;
-                        color2[2]=c2[2]/norm1;
-                        if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<0.2){
-                            ok = 1;
+                        if(normalized){
+                            Vec3b c1 = background.at<Vec3b>(i, j);
+                            Vec3b c2 = image.at<Vec3b>(i+di, j+dj);
+                            double color1[3];
+                            double color2[3];
+                            color1[0] = c1[0]/norm1;
+                            color1[1]=c1[1]/norm1;
+                            color1[2]=c1[2]/norm1;
+                            color2[0] = c2[0]/norm2;
+                            color2[1]=c2[1]/norm2;
+                            color2[2]=c2[2]/norm2;
+                            if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<treshold){
+                                ok = 1;
+                            }
+                        } else {
+                            Vec3b color1 = background.at<Vec3b>(i, j);
+                            Vec3b color2 = image.at<Vec3b>(i+di, j+dj);
+                            if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<treshold){
+                                ok = 1;
+                            }
                         }
                     }
                 }

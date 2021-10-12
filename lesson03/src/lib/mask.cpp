@@ -1,7 +1,9 @@
 #include "mask.h"
 #include<iostream>
 #include <random>
+#include <filesystem>
 #include <libutils/rasserts.h>
+#include "disjoint_set.h"
 
 using namespace cv;
 using namespace std;
@@ -46,25 +48,50 @@ double norm (Mat m){
     return ans;
 }
 
+Mask delSmall(Mask mask, int sz){
+    DisjointSet ds(mask.m*mask.n);
+    for(int i = 0; i<mask.n; i++){
+        for(int j = 0; j<mask.m; j++){
+            if(j<mask.m-1 && mask.a[i][j]==mask.a[i][j+1])
+                ds.union_sets(i*mask.m+j, i*mask.m+j+1);
+            if(i<mask.n-1 && mask.a[i][j]==mask.a[i+1][j])
+                ds.union_sets(i*mask.m+j, i*mask.m+j+mask.m);
+        }
+    }
+    for(int i = 0; i<mask.n; i++){
+        for(int j = 0; j<mask.m; j++){
+            if(ds.get_set_size(ds.get_set(i*mask.m+j))<sz){
+                mask.a[i][j] = !mask.a[i][j];
+            }
+        }
+    }
+    return mask;
+}
+
 Mask expand(Mask mask, int r, bool exp1, int numNeed){
     int sum = 0;
-    bool calc = 0;
-    Mask nw = mask;
+    bool calc;
+    Mask nw = Mask(mask.n, mask.m);
+    for(int i = 0; i<mask.n; i++){
+        for(int j = 0; j<mask.m; j++){
+            nw.a[i][j] = mask.a[i][j];
+        }
+    }
     for(int i = 0; i<mask.n; i++){
         calc = 0;
         for(int j = 0; j<mask.m; j++){
             if(mask.a[i][j]!=exp1){
                 if(calc){
-                    int di = -r;
-                    for(int dj = -r+1; dj<r; dj++){
+                    int dj = -r;
+                    for(int di = -r+1; di<r; di++){
                         if(i+di<mask.n && i+di>=0 && j+dj<mask.m && j+dj>=0){
-                            sum-=(mask.a[i][j]==exp1);
+                            sum-=(mask.a[i+di][j+dj]==exp1);
                         }
                     }
-                    di = r-1;
-                    for(int dj = -r+1; dj<r; dj++){
+                    dj = r-1;
+                    for(int di = -r+1; di<r; di++){
                         if(i+di<mask.n && i+di>=0 && j+dj<mask.m && j+dj>=0){
-                            sum+=(mask.a[i][j]==exp1);
+                            sum+=(mask.a[i+di][j+dj]==exp1);
                         }
                     }
                 } else {
@@ -72,7 +99,7 @@ Mask expand(Mask mask, int r, bool exp1, int numNeed){
                     for(int di = -r+1; di<r; di++){
                         for(int dj = -r+1; dj<r; dj++){
                             if(i+di<mask.n && i+di>=0 && j+dj<mask.m && j+dj>=0){
-                                sum+=(mask.a[i][j]==exp1);
+                                sum+=(int)(mask.a[i+di][j+dj]==exp1);
                             }
                         }
                     }
@@ -87,7 +114,22 @@ Mask expand(Mask mask, int r, bool exp1, int numNeed){
     return nw;
 }
 
-Mask createMask(Mat image, Mat background, bool normalized, double treshold){
+Mat toMat(Mask mask){
+    Scalar color(0, 0, 0);
+    Mat img(mask.n, mask.m, CV_8UC3, color);
+    for(int i = 0; i<mask.n; i++){
+        for(int j = 0; j<mask.m; j++){
+            img.at<Vec3b>(i, j) = Vec3b(mask.a[i][j]*255, mask.a[i][j]*255, mask.a[i][j]*255);
+        }
+    }
+    return img;
+}
+
+Mask createMask(Mat image, Mat background, bool normalized, double treshold, bool save){
+    string resultsDir = "lesson03/resultsData/";
+    if (!filesystem::exists(resultsDir)) { // если папка еще не создана
+        filesystem::create_directory(resultsDir); // то создаем ее
+    }
     rassert(image.rows==background.rows && image.cols==background.cols, "image size not equal to background");
     Mask res = Mask(image.rows, image.cols);
     double norm1 = norm(image);
@@ -127,10 +169,37 @@ Mask createMask(Mat image, Mat background, bool normalized, double treshold){
             else res.a[i][j] = 1;
         }
     }
+    if(save){
+        string filename = resultsDir + "mask_0_base.jpg";
+        imwrite(filename, toMat(res));
+    }
+    const int minsz = 800;
+    res = delSmall(res, minsz);
+    if(save){
+        string filename = resultsDir + "mask_1_dsu.jpg";
+        imwrite(filename, toMat(res));
+    }
     const int r = 4;
     res = expand(res, r, 1, r);
+    if(save){
+        string filename = resultsDir + "test1.jpg";
+        imwrite(filename, toMat(res));
+    }
     res = expand(res, r, 0, r);
+    if(save){
+        string filename = resultsDir + "test2.jpg";
+        imwrite(filename, toMat(res));
+    }
     res = expand(res, r, 0, r);
+    if(save){
+        string filename = resultsDir + "test3.jpg";
+        imwrite(filename, toMat(res));
+    }
     res = expand(res, r, 1, r);
+    if(save){
+        string filename = resultsDir + "mask_2_morph.jpg";
+        imwrite(filename, toMat(res));
+    }
+
     return res;
 }

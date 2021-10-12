@@ -1,7 +1,7 @@
 #include <iostream>
 #include <filesystem> // это нам понадобится чтобы создать папку для результатов
 #include <libutils/rasserts.h>
-#include "mask.h"
+#include "lib/mask.h"
 
 #include <opencv2/highgui.hpp> // подключили часть библиотеки OpenCV, теперь мы можем читать и сохранять картинки
 
@@ -38,23 +38,33 @@ void task4() {
             break;
         }
     }
-    cv::Mat background = imread("lesson03/data/castle_large.jpg");
+    Mat background = imread("lesson03/data/castle_large.jpg");
+    bool save = 0;
+    string resultsDir = "lesson03/resultsData/";
+    if (!filesystem::exists(resultsDir)) { // если папка еще не создана
+        filesystem::create_directory(resultsDir); // то создаем ее
+    }
+
     while (video.isOpened()) {
         bool isSuccess = video.read(content.frame);
         rassert(isSuccess, 348792347819);
         rassert(!content.frame.empty(), 3452314124643);
-        Mask mask = createMask(content.frame.clone(), base.clone(), true, 0.15);
+        Mask mask = createMask(content.frame.clone(), base.clone(), false, 24/*0.15*/, save);
         Mat res = mask.use(content.frame.clone(), background);
-
-        Mask mask0 = createMask(content.frame.clone(), base.clone(), false, 15);
-        Mat res0 = mask0.use(content.frame.clone(), background);
-
-        cv::imshow("video", res);
-        cv::imshow("video_basic", res0);
-
+        if(save) {
+            string filename = resultsDir + "raw.jpg";
+            imwrite(filename, content.frame);
+            filename = resultsDir + "sample.jpg";
+            imwrite(filename, base);
+        }
+        imshow("video", res);
+        save = 0;
         int key = cv::waitKey(10);
-        if(key==27 || key==32)
+        if(key==27)
             break;
+        if(key==32){
+            save = 1;
+        }
     }
 }
 

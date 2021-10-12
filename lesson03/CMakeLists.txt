@@ -10,7 +10,8 @@ find_package(OpenCV 4.5.1 REQUIRED)
 # 5) После нажатия OK обратите внимание что внизу в CMake окошке появились строки успеха включая что-то вроде "Found OpenCV: C:/.../opencv/build"
 
 set(SOURCES
-        src/mask.cpp src/mask.h)
+        src/lib/mask.cpp src/lib/mask.h
+        src/lib/disjoint_set.cpp src/lib/disjoint_set.h)
 
 set(LIBRARIES
         libutils

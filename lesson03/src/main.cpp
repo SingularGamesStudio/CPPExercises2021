@@ -49,7 +49,7 @@ void task4() {
         bool isSuccess = video.read(content.frame);
         rassert(isSuccess, 348792347819);
         rassert(!content.frame.empty(), 3452314124643);
-        Mask mask = createMask(content.frame.clone(), base.clone(), false, 24/*0.15*/, save);
+        Mask mask = createMask(content.frame.clone(), base.clone(), 2, 0.2, save);
         Mat res = mask.use(content.frame.clone(), background);
         if(save) {
             string filename = resultsDir + "raw.jpg";

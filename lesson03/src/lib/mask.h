@@ -17,4 +17,4 @@ struct Mask{
 
 //Mask expand(Mask mask, int r, bool inv, int numb);
 
-Mask createMask(Mat image, Mat background, bool normalized, double treshold, bool save);
+Mask createMask(Mat image, Mat background, int normalize, double treshold, bool save);

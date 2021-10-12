@@ -125,7 +125,7 @@ Mat toMat(Mask mask){
     return img;
 }
 
-Mask createMask(Mat image, Mat background, bool normalized, double treshold, bool save){
+Mask createMask(Mat image, Mat background, int normalize, double treshold, bool save){
     string resultsDir = "lesson03/resultsData/";
     if (!filesystem::exists(resultsDir)) { // если папка еще не создана
         filesystem::create_directory(resultsDir); // то создаем ее
@@ -140,7 +140,7 @@ Mask createMask(Mat image, Mat background, bool normalized, double treshold, boo
             for(int di = -1; di<2; di++){
                 for(int dj = -1; dj<2; dj++){
                     if(i+di>=0 && i+di<background.rows && j+dj>=0 && j+dj<background.cols){
-                        if(normalized){
+                        if(normalize==1){
                             Vec3b c1 = background.at<Vec3b>(i, j);
                             Vec3b c2 = image.at<Vec3b>(i+di, j+dj);
                             double color1[3];
@@ -154,9 +154,25 @@ Mask createMask(Mat image, Mat background, bool normalized, double treshold, boo
                             if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<treshold){
                                 ok = 1;
                             }
-                        } else {
+                        } else if(normalize==0){
                             Vec3b color1 = background.at<Vec3b>(i, j);
                             Vec3b color2 = image.at<Vec3b>(i+di, j+dj);
+                            if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<treshold){
+                                ok = 1;
+                            }
+                        } else {
+                            Vec3b c1 = background.at<Vec3b>(i, j);
+                            Vec3b c2 = image.at<Vec3b>(i+di, j+dj);
+                            double n1 = max(max(c1[0], c1[1]), c1[2]);
+                            double n2 = max(max(c2[0], c2[1]), c2[2]);
+                            double color1[3];
+                            double color2[3];
+                            color1[0] = c1[0]/n1;
+                            color1[1]=c1[1]/n1;
+                            color1[2]=c1[2]/n1;
+                            color2[0] = c2[0]/n2;
+                            color2[1]=c2[1]/n2;
+                            color2[2]=c2[2]/n2;
                             if(sqrt(abs(color1[0]-color2[0])*abs(color1[0]-color2[0])+abs(color1[1]-color2[1])*abs(color1[1]-color2[1])+abs(color1[2]-color2[2])*abs(color1[2]-color2[2]))<treshold){
                                 ok = 1;
                             }

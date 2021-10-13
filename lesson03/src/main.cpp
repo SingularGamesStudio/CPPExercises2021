@@ -20,6 +20,10 @@ void onMouseClick4(int event, int x, int y, int flags, void *pointerToMyVideoCon
     }
 }
 
+Mat gauss(Mat img){
+
+}
+
 void task4() {
     cv::VideoCapture video(0);
     rassert(video.isOpened(), 3423948392481);
@@ -33,6 +37,8 @@ void task4() {
         rassert(!content.frame.empty(), 3452314124643);
         cv::imshow("video", content.frame);
         int key = cv::waitKey(10);
+        if(key==27)
+            return;
         if(key==32){
             base = content.frame.clone();
             break;
@@ -44,12 +50,12 @@ void task4() {
     if (!filesystem::exists(resultsDir)) { // если папка еще не создана
         filesystem::create_directory(resultsDir); // то создаем ее
     }
-
+    double tres1 = 0.15, tres2 = 30;
     while (video.isOpened()) {
         bool isSuccess = video.read(content.frame);
         rassert(isSuccess, 348792347819);
         rassert(!content.frame.empty(), 3452314124643);
-        Mask mask = createMask(content.frame.clone(), base.clone(), 2, 0.2, save);
+        Mask mask = createMask(content.frame.clone(), base.clone(), 3, tres1, save, tres2);
         Mat res = mask.use(content.frame.clone(), background);
         if(save) {
             string filename = resultsDir + "raw.jpg";
@@ -65,6 +71,16 @@ void task4() {
         if(key==32){
             save = 1;
         }
+        //cout << key << "\n";
+        if(key==97)
+            tres1-=0.01;
+        if(key==100)
+            tres1+=0.01;
+        if(key==115)
+            tres2-=1;
+        if(key==119)
+            tres2+=1;
+        cout << tres1 << " " << tres2 << "\n";
     }
 }
 

@@ -2,23 +2,38 @@
 #include <iostream>
 #include <libutils/rasserts.h>
 
-#include "blur.h" // TODO реализуйте функцию блюра с произвольной силой размытия в файле blur.cpp
+#include "blur.h"
+
+
+using namespace std;
+using namespace cv;
+
+string resultsDir = "lesson06/resultsData/";
 
 void testSomeBlur() {
-    // TODO выберите любую картинку и любую силу сглаживания - проверьте что результат - чуть размытая картинка
-    // Входные картинки для тестирования возьмите из предыдущего урока (т.е. по пути lesson05/data/*).
-    // Результирующие картинки сохарняйте в эту папку (т.е. по пути lesson06/resultsData/*).
+    std::string name = "valve";
+    cv::Mat img = cv::imread("lesson05/data/" + name + ".jpg");
+    rassert(!img.empty(), 23981920813);
+    Mat res = blur(img.clone(), 1);
+
+    cv::imwrite(resultsDir + name + "_blur.jpg", res);
 }
 
 void testManySigmas() {
-    // TODO возьмите ту же самую картинку но теперь в цикле проведите сглаживание для нескольких разных сигм
-    // при этом результирующую картинку сохраняйте с указанием какая сигма использовалась:
-    // для того чтобы в название файла добавить значение этой переменной -
-    // воспользуйтесь функцией преобразующей числа в строчки - std::to_string(sigma)
+    std::string name = "valve";
+    cv::Mat img = cv::imread("lesson05/data/" + name + ".jpg");
+    rassert(!img.empty(), 23981920813);
+    for(double sig = 0.6; sig<5; sig+=0.3){
+        Mat res = blur(img.clone(), sig);
+        cv::imwrite(resultsDir + name + to_string(sig) + "_blur.jpg", res);
+    }
 }
 
 int main() {
     try {
+        if (!filesystem::exists(resultsDir)) { // если папка еще не создана
+            filesystem::create_directory(resultsDir); // то создаем ее
+        }
         testSomeBlur();
         testManySigmas();
 

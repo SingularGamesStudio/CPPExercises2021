@@ -23,16 +23,26 @@ void test(const std::string &name) {
     cv::imwrite(resultsDir + name + "_grad.jpg", grad);
     Scalar color(0);
     Mat result(360, sqrt(grad.cols*grad.cols+grad.rows*grad.rows)+10, CV_32FC1, color);
+    float amax = 0;
     for(int i = 0; i<grad.rows; i++){
         for(int j = 0; j<grad.cols; j++){
             for(int f = 0; f<360; f++){
-                float r = i*abs(sin(((float)f)*pi/180.0))+j*abs(cos(((float)f)*pi/180.0));
-                result.at<float>(f, (int) r) += grad.at<float>(i, j)*0.01;
+                float r = i*sin(((float)f)*pi/180.0)+j*cos(((float)f)*pi/180.0);
+                //if((int)r<0)
+                //    cout << "amopgus";
+                result.at<float>(f, (int) r) += grad.at<float>(i, j);
+                amax = max(amax, result.at<float>(f, (int) r));
                     //cout << r << " " << sqrt(grad.cols*grad.cols+grad.rows*grad.rows)+10;
             }
         }
     }
-    cout << "ok\n";
+    amax = amax/255;
+    for(int i = 0; i<result.rows; i++){
+        for(int j = 0; j<result.cols; j++){
+            result.at<float>(i, j) /=amax;
+        }
+    }
+    cout << name << " done\n";
     cv::imwrite(resultsDir + name + "_result.jpg", result);
 }
 

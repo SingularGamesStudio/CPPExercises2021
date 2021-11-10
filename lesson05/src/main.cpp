@@ -22,17 +22,17 @@ void test(const std::string &name) {
     cv::Mat grad = convertDXYToGradientLength(dxy);
     cv::imwrite(resultsDir + name + "_grad.jpg", grad);
     Scalar color(0);
-    Mat result(360, sqrt(grad.cols*grad.cols+grad.rows*grad.rows)+10, CV_32FC1);
+    Mat result(360, sqrt(grad.cols*grad.cols+grad.rows*grad.rows)+10, CV_32FC1, color);
     for(int i = 0; i<grad.rows; i++){
         for(int j = 0; j<grad.cols; j++){
             for(int f = 0; f<360; f++){
                 float r = i*abs(sin(((float)f)*pi/180.0))+j*abs(cos(((float)f)*pi/180.0));
-                result.at<float>(f, (int) r) += grad.at<float>(i, j)*100;
+                result.at<float>(f, (int) r) += grad.at<float>(i, j)*0.01;
                     //cout << r << " " << sqrt(grad.cols*grad.cols+grad.rows*grad.rows)+10;
             }
         }
     }
-
+    cout << "ok\n";
     cv::imwrite(resultsDir + name + "_result.jpg", result);
 }
 

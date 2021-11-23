@@ -11,7 +11,8 @@ find_package(OpenCV 4.5.1 REQUIRED)
 
 set(SOURCES
         src/hough.cpp
-        src/hough.h)
+        src/hough.h
+        src/geom.cpp)
 
 set(LIBRARIES
         libutils

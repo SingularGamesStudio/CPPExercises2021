@@ -26,7 +26,7 @@ public:
 cv::Mat buildHough(cv::Mat sobel);
 
 // Эта функция проходит по всему пространству Хафа и извлекает перечень локальных экстремумов - найденных прямых
-std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace);
+std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace, cv::Mat blurredHough);
 
 // Эта функция по множеству всех найденных локальных экстремумов (прямых) находит самую популярную прямую
 // и возвращает только вектор из тех прямых, что не сильно ее хуже (набрали хотя бы thresholdFromWinner голосов от победителя, т.е. например половину)

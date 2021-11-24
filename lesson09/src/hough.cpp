@@ -87,7 +87,7 @@ cv::Mat buildHough(cv::Mat sobel) {
     return accumulator;
 }
 
-std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace)
+std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace, cv::Mat blurredHough)
 {
     rassert(houghSpace.type() == CV_32FC1, 234827498237080);
 
@@ -100,7 +100,7 @@ std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace)
     for (int theta = 0; theta < max_theta; ++theta) {
         for (int r = 0; r < max_r; ++r) {
             bool ok = 1;
-            float votes = houghSpace.at<float>(r, theta);
+            float votes = blurredHough.at<float>(r, theta);
             vector<pair<int, int>> neighbors;
             for(int dtheta = -1; dtheta<2; dtheta++){
                 for(int dr = -1; dr<2; dr++){
@@ -128,13 +128,13 @@ std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace)
                     neighbors.push_back({r+1, 359});
             }
             for(auto z:neighbors){
-                if(houghSpace.at<float>(z.first, z.second)>votes){
+                if(blurredHough.at<float>(z.first, z.second)>votes){
                     ok = 0;
                     break;
                 }
             }
             if (ok) {
-                PolarLineExtremum line(theta, r, votes);
+                PolarLineExtremum line(theta, r, houghSpace.at<float>(r, theta));
                 winners.push_back(line);
             }
         }

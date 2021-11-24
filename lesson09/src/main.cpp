@@ -67,12 +67,12 @@ void test(std::string name) {
     if (blurY < blurX) {
         blurY = blurX;
     }
-    cv::blur(hough, blurredHough, cv::Size(blurX, blurY)); // сглаживаем пространство Хафа (сглаженный результат в blurredHough)
-    hough = blurredHough; // заменяем сырое пространство Хафа на сглаженное
-    cv::imwrite("lesson09/resultsData/" + name + "_3_hough_blurred.png", hough*255.0f/max_accumulated);
+    cv::blur(hough.clone(), blurredHough, cv::Size(blurX, blurY)); // сглаживаем пространство Хафа (сглаженный результат в blurredHough)
+    ///hough = blurredHough; // заменяем сырое пространство Хафа на сглаженное
+    cv::imwrite("lesson09/resultsData/" + name + "_3_hough_blurred.png", blurredHough*255.0f/max_accumulated);
 
 
-    std::vector<PolarLineExtremum> lines = findLocalExtremums(hough);
+    std::vector<PolarLineExtremum> lines = findLocalExtremums(hough, blurredHough);
 
 
     double thresholdFromWinner = 0.5; // хотим оставить только те прямые у кого не менее половины голосов по сравнению с самой популярной прямой
@@ -84,7 +84,7 @@ void test(std::string name) {
     }
 
     int radius = 5;
-    cv::Mat houghWithCircles = drawCirclesOnExtremumsInHoughSpace(hough*255.0f/max_accumulated, lines, radius);
+    cv::Mat houghWithCircles = drawCirclesOnExtremumsInHoughSpace(blurredHough*255.0f/max_accumulated, lines, radius);
     cv::imwrite("lesson09/resultsData/" + name + "_4_hough_circles.png", houghWithCircles);
 
     cv::Mat imgWithLines = drawLinesOnImage(img, lines);

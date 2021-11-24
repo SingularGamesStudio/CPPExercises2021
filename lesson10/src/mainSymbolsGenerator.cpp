@@ -10,27 +10,28 @@
 #define NSAMPLES_PER_LETTER 5
 #define LETTER_DIR_PATH std::string("lesson10/generatedData/letters")
 
+using namespace std;
 
 int randFont() {
     int fonts[] = {
-//            cv::FONT_HERSHEY_SIMPLEX,
-//            cv::FONT_HERSHEY_PLAIN,
-//            cv::FONT_HERSHEY_DUPLEX,
-//            cv::FONT_HERSHEY_COMPLEX,
-//            cv::FONT_HERSHEY_TRIPLEX,
+            cv::FONT_HERSHEY_SIMPLEX,
+            cv::FONT_HERSHEY_PLAIN,
+            cv::FONT_HERSHEY_DUPLEX,
+            cv::FONT_HERSHEY_COMPLEX,
+            cv::FONT_HERSHEY_TRIPLEX,
             cv::FONT_HERSHEY_COMPLEX_SMALL,
-//            cv::FONT_HERSHEY_SCRIPT_SIMPLEX,
-//            cv::FONT_HERSHEY_SCRIPT_COMPLEX,
+            cv::FONT_HERSHEY_SCRIPT_SIMPLEX,
+            cv::FONT_HERSHEY_SCRIPT_COMPLEX,
     };
     // Выбираем случайный шрифт из тех что есть в OpenCV
     int nfonts = (sizeof(fonts) / sizeof(int));
     int font = rand() % nfonts;
 
     // С вероятностью 20% делаем шрифт наклонным (italic)
-//    bool is_italic = ((rand() % 5) == 0);
-//    if  (is_italic) {
-//        font = font | cv::FONT_ITALIC;
-//    }
+    bool is_italic = ((rand() % 5) == 0);
+    if  (is_italic) {
+        font = font | cv::FONT_ITALIC;
+    }
 
     return font;
 }
@@ -103,7 +104,6 @@ void generateAllLetters() {
 
 
 void experiment1() {
-    // TODO Проведите эксперимент 1:
     // Пробежав в цикле по каждой букве - посчитайте насколько сильно она отличается между своими пятью примерами? (NSAMPLES_PER_LETTER)
     // Для каждой буквы выведите:
     // 1) Среднее попарное расстояние (среднюю похожесть) между всеми примерами этой буквы
@@ -112,19 +112,28 @@ void experiment1() {
     // А так же среди всех максимальных расстояний найдите максимальное и выведите его в конце
 
     std::cout << "________Experiment 1________" << std::endl;
+    pair<double, char> gmax = {0, 'a'};
     for (char letter = 'a'; letter <= 'z'; ++letter) {
         std::string letterDir = LETTER_DIR_PATH + "/" + letter;
-
+        double distMax = 0;
+        double distSum = 0;
+        double distN = 0;
         for (int sampleA = 1; sampleA <= NSAMPLES_PER_LETTER; ++sampleA) {
             for (int sampleB = sampleA + 1; sampleB <= NSAMPLES_PER_LETTER; ++sampleB) {
                 cv::Mat a = cv::imread(letterDir + "/" + std::to_string(sampleA) + ".png");
                 cv::Mat b = cv::imread(letterDir + "/" + std::to_string(sampleB) + ".png");
                 HoG hogA = buildHoG(a);
-                // TODO
+                HoG hogB = buildHoG(b);
+                double diff = distance(hogA, hogB);
+                distMax = max(distMax, diff);
+                distSum+=diff;
+                distN++;
             }
         }
-//        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
+        gmax = max({distMax, letter}, gmax);
+        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
     }
+    cout << gmax.first << " " << gmax.second << "\n";
 }
 
 void experiment2() {
@@ -139,11 +148,29 @@ void experiment2() {
     std::cout << "________Experiment 2________" << std::endl;
     for (char letterA = 'a'; letterA <= 'z'; ++letterA) {
         std::string letterDirA = LETTER_DIR_PATH + "/" + letterA;
-
+        pair<double, char> mind = {10000, '?'};
+        pair<double, char> maxd = {0, '?'};
         for (char letterB = 'a'; letterB <= 'z'; ++letterB) {
+            std::string letterDirB = LETTER_DIR_PATH + "/" + letterB;
             if (letterA == letterB) continue;
 
-            // TODO
+            double avgdiff = 0;
+            double cntdiff = 0;
+
+            for (int sampleA = 1; sampleA <= NSAMPLES_PER_LETTER; ++sampleA) {
+                for (int sampleB = sampleA + 1; sampleB <= NSAMPLES_PER_LETTER; ++sampleB) {
+                    cv::Mat a = cv::imread(letterDirA + "/" + std::to_string(sampleA) + ".png");
+                    cv::Mat b = cv::imread(letterDirB + "/" + std::to_string(sampleB) + ".png");
+                    HoG hogA = buildHoG(a);
+                    HoG hogB = buildHoG(b);
+                    double diff = distance(hogA, hogB);
+                    avgdiff+=diff;
+                    cntdiff++;
+                }
+            }
+            avgdiff/=cntdiff;
+            mind = min(mind, {avgdiff, letterB});
+            maxd = max(maxd, {avgdiff, letterB});
         }
 
 //        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
@@ -159,10 +186,9 @@ int main() {
 
         std::cout << "Images with letters were generated!" << std::endl;
 
-        // TODO:
-        experiment1();
 
-        // TODO:
+        //experiment1();
+
         experiment2();
 
     } catch (const std::exception &e) {

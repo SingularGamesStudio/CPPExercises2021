@@ -137,7 +137,6 @@ void experiment1() {
 }
 
 void experiment2() {
-    // TODO Проведите эксперимент 2:
     // Для каждой буквы найдите среди остальных наиболее похожую и наименее похожую
     //
     // А так же среди всех минимальных расстояний найдите среднее и выведите его в конце
@@ -172,8 +171,9 @@ void experiment2() {
             mind = min(mind, {avgdiff, letterB});
             maxd = max(maxd, {avgdiff, letterB});
         }
-
-//        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
+        cout << "For letter " << letterA << ":\n";
+        cout << "    Most close: " << mind.second << "\n";
+        cout << "    Most far: " << maxd.second << "\n";
     }
 }
 

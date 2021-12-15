@@ -5,3 +5,4 @@ cmake-build*
 opencv*.dll
 **/resultsData
 **/generatedData
+**/tempNOOTgit

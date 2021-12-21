@@ -28,11 +28,15 @@ int main() {
                 int num = 0;
                 for(auto u:letters){
                     for(auto z:u){
-                        if(i==0 && j==1){
-                            cv::imwrite(out_path + "/test/"+ to_string(num)+".png", z);
-                            num++;
+                        if(z.empty())
+                            cout << " ";
+                        else{
+                            if(i==0 && j==1){
+                                cv::imwrite(out_path + "/test/"+ to_string(num)+".png", z);
+                                num++;
+                            }
+                            cout << get(z);
                         }
-                        cout << get(z);
                     }
                     cout << "\n";
                 }

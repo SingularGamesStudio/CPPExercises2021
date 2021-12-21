@@ -156,9 +156,9 @@ cv::Mat generateImage(std::string text, int width=128, int height=128) {
     cv::Mat img(height, width, CV_8UC3, backgroundColor);
 
     // Выберем случайные параметры отрисовки текста - шрифт, размер, толщину, цвет
-    int font = randFont();
+    int font = cv::FONT_HERSHEY_SIMPLEX;//randFont();
     double fontScale = randFontScale();
-    int thickness = randThickness();
+    int thickness = 2;
     cv::Scalar color = randColor1();
 
     // Узнаем размер текста в пикселях (если его нарисовать с указанными параметрами)
@@ -181,7 +181,9 @@ char get(cv::Mat img){
         init=true;
         for(char c = 'a'; c<='z'; c++){
             for(int i = 0; i<10; i++){
-                cv::Mat img1 = generateImage(""+c);
+                string s(1, c);
+                cv::Mat img1 = generateImage(s);
+                cv::imwrite("lesson11/resultsData/alphabet/1/test/" + s+".png", img1);
                 hogs[c-'a'].push_back(buildHoG(img1));
             }
         }
@@ -190,7 +192,13 @@ char get(cv::Mat img){
     pair<HoG, int> mind = {HoG(), -1};
     for(int ch = 0; ch<26; ch++){
         for(auto hog:hogs[ch]){
-            if(mind.second==-1 || distance(my, hog)< distance(my, mind.first)){
+            if (mind.second==-1){
+                mind = {hog, ch};
+                continue;
+            }
+            double dist1 = distance(my, hog);
+            double dist2 = distance(my, mind.first);
+            if(dist1 < dist2){
                 mind = {hog, ch};
             }
         }

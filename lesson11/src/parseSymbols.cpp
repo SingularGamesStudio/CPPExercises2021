@@ -60,43 +60,58 @@ std::vector<vector<cv::Mat>> splitSymbols(cv::Mat img)
     std::vector<std::vector<cv::Point>> contoursPoints2;
     cv::findContours(binary, contoursPoints2, cv::RETR_EXTERNAL , cv::CHAIN_APPROX_NONE);
     for(int i = 0; i<contoursPoints2.size(); i++){
-        if(contoursPoints2[i].size()<15){
+        if(contoursPoints2[i].size()<30){
             contoursPoints2.erase(contoursPoints2.begin()+i);
             i--;
         }
 
     }
-
     vector<Rect> sorted;
     vector<int> hei;
+    vector<int> wid;
 
     for (int contourI = 0; contourI < contoursPoints2.size(); ++contourI) {
         std::vector<cv::Point> points = contoursPoints2[contourI]; // перем очередной контур
-        cv::Rect box = cv::boundingRect(points); // строим прямоугольник по всем пикселям контура (bounding box = бокс ограничивающий объект)
+        cv::Rect box = cv::boundingRect(
+                points); // строим прямоугольник по всем пикселям контура (bounding box = бокс ограничивающий объект)
         sorted.push_back(box);
-        hei.push_back(-box.tl().y+box.br().y);
+        hei.push_back(-box.tl().y + box.br().y);
+        wid.push_back(-box.tl().x + box.br().x);
     }
     sort(hei.begin(), hei.end());
+    sort(wid.begin(), wid.end());
     int med = hei[hei.size()/2];
+    int medw = wid[wid.size()/2];
     sort(sorted.begin(), sorted.end(), cmp);
     int last = -1;
     vector<vector<cv::Mat>> symbols;
     vector<vector<cv::Rect>> rects;
     rects.push_back(vector<cv::Rect>());
-    for(auto z:sorted){
-        int pos = (z.tl().y+z.br().y);
-        if(last!=-1){
-            if(pos-last>med){
+    for(auto z:sorted) {
+        int pos = (z.tl().y + z.br().y);
+        if (last != -1) {
+            if (pos - last > med) {
                 rects.push_back(vector<cv::Rect>());
             }
         }
-        rects.back().push_back(z);
+        cv::Rect z1 = z;
+        z1.width += 6;
+        z1.height += 6;
+        z1.x -= 4;
+        z1.y -= 4;
+        rects.back().push_back(z1);
         last = pos;
     }
-    for(int i = 0; i< symbols.size(); i++){
+    for(int i = 0; i< rects.size(); i++){
         sort(rects[i].begin(), rects[i].end(), cmp1);
         symbols.push_back(vector<cv::Mat>());
+        last = -1;
         for(auto z:rects[i]){
+            int pos = (z.tl().x+z.br().x);
+            if(pos-last>4*medw){
+                symbols[i].push_back(cv::Mat(0, 0, CV_8UC3));
+            }
+            last = pos;
             symbols[i].push_back(img(z).clone());
         }
     }

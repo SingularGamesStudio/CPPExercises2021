@@ -121,6 +121,16 @@ double MSE(vector<cv::Point2f> points, Line line){
     return sum/cnt;
 }
 
+int inliers(vector<cv::Point2f> points, Line line, double treshold){
+    int cnt = 0;
+    for(auto z:points){
+        double y_pred = line.getYFromX(z.x);
+        if(abs(z.y-y_pred)<treshold)
+            cnt++;
+    }
+    return cnt;
+}
+
 Line fitLineFromNPoints(std::vector<cv::Point2f> points)
 {
     int n = points.size();
@@ -141,17 +151,23 @@ Line fitLineFromNPoints(std::vector<cv::Point2f> points)
 
 Line fitLineFromNNoisyPoints(std::vector<cv::Point2f> points)
 {
+    const int iter = 10000;
+    const double treshold = 2;
     int n = points.size();
-    double minMSE = 1000000000;
+    mt19937 rnd(42);
+    double maxCnt = 0;
     Line ans(0.0, -1.0, 2.0);
-    for(int i = 0; i<n; i++){
-        for(int j = i+1; j<n; j++){
-            Line line = fitLineFromTwoPoints(points[i], points[j]);
-            double now = MSE(points, line);
-            if(now<minMSE){
-                minMSE = now;
-                ans = line;
-            }
+    for (int it = 0; it<iter; it++){
+        int i = rnd()%n;
+        int j = rnd()%n;
+        while(i==j){
+            j = rnd()%n;
+        }
+        Line line = fitLineFromTwoPoints(points[i], points[j]);
+        int now = inliers(points, line, treshold);
+        if(now>maxCnt){
+            maxCnt = now;
+            ans = line;
         }
     }
     return ans;

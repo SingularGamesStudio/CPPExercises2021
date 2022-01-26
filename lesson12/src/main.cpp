@@ -8,7 +8,7 @@ void test1() {
     cv::Scalar blue(255, 0, 0);
     cv::Scalar green(0, 255, 0);
     cv::Scalar red(0, 0, 255);
-    cv::Scalar blueRed(255, 0, 255);
+    cv::Scalar blueRed(255, 255, 255);
 
     std::string results = "lesson12/resultsData/";
     if (!std::filesystem::exists(results)) { // если папка еще не создана

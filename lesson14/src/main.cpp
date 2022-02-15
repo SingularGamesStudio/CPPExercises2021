@@ -22,7 +22,7 @@ void drawText(cv::Mat img, std::string text, double fontScale, int &yOffset) {
 
 
 void run() {
-    const bool useWebcam = true; // TODO попробуйте выставить в true, если у вас работает вебкамера - то и здорово! иначе - работайте хотя бы со статичными картинками
+    const bool useWebcam = true;
 
     bool drawOver = true; // рисовать ли поверх наложенную картинку (можно включить-включить чтобы мигнуть картинкой и проверить качество выравнивания)
     bool drawDebug = true; // рисовать ли поверх отладочную информацию (например красный кант вокруг нарисованной поверх картинки)
@@ -59,72 +59,97 @@ void run() {
 
         cv::Mat mainWindowImage = currentFrame.clone(); // делаем копию чтобы на ней рисовать любую отладочную информацию не портя оригинальную картинку
 
-        {
-            // TODO сопоставьте две картинки: currentFrame и imgForDetection, затем нарисуйте imgToDraw в соответствии с матрицей Гомографии
-            cv::Ptr<cv::FeatureDetector> detector;
-            cv::Ptr<cv::DescriptorMatcher> matcher;
-            if (useSIFTDescriptor) {
-                detector = cv::SIFT::create();
-                matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
-            } else {
-                // TODO SIFT работает довольно медленно, попробуйте использовать ORB + не забудьте что тогда вам нужен другой DescriptorMatcher
 
-                // TODO кроме того будет быстрее работать если вы будете использовать релизную сборку вместо Debug:
-                // см. "Как ускорить программу" - https://www.polarnick.com/blogs/239/2021/school239_11_2021_2022/2021/10/05/lesson5-disjoint-set.html
-            }
+        cv::Ptr<cv::FeatureDetector> detector;
+        cv::Ptr<cv::DescriptorMatcher> matcher;
+        if (useSIFTDescriptor) {
+            detector = cv::SIFT::create();
+            matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+        } else {
+            // TODO SIFT работает довольно медленно, попробуйте использовать ORB + не забудьте что тогда вам нужен другой DescriptorMatcher
 
-            // TODO детектируйте и постройте дескрипторы у ключевых точек
-            // std::cout << "Keypoints initially: " << keypoints0.size() << ", " << keypoints1.size() << "..." << std::endl;
-
-            // TODO сопоставьте ключевые точки
-
-            // TODO пофильтруйте сопоставления, как минимум через K-ratio test, но лучше на ваш выбор
-//            std::vector<cv::Point2f> points0;
-//            std::vector<cv::Point2f> points1;
-//            for (int i = 0; i < keypoints0.size(); ++i) {
-//                int fromKeyPoint0 = ....queryIdx;
-//                int toKeyPoint1Best = ....trainIdx;
-//                float distanceBest = ....distance;
-//                rassert(fromKeyPoint0 == i, 348723974920074);
-//                rassert(toKeyPoint1Best < keypoints1.size(), 347832974820076);
-
-//                int toKeyPoint1SecondBest = ....trainIdx;
-//                float distanceSecondBest = ....distance;
-//                rassert(toKeyPoint1SecondBest < keypoints1.size(), 3482047920081);
-//                rassert(distanceBest <= distanceSecondBest, 34782374920082);
-
-//                if (TODO) {
-//                    points0.push_back(keypoints0[i].pt);
-//                    points1.push_back(keypoints1[toKeyPoint1Best].pt);
-//                }
-//            }
-//            rassert(points0.size() == points1.size(), 234723947289089);
-            // TODO добавьте вывод в лог - сколько ключевых точек было изначально, и сколько осталось сопоставлений после фильтрации
-
-            // TODO findHomography(...) + рисование поверх:
-//            cv::Mat H01 = cv::findHomography(TODO);
-//            if (H01.empty()) {
-//                // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
-//                // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
-//                std::cout << "FAIL 24123422!" << std::endl;
-//            } else {
-//                cv::Mat overlapImg = imgToDraw.clone();
-//                if (drawDebug) {
-//                    // рисуем красный край у накладываемой картинки
-//                    cv::Scalar red(0, 0, 255);
-//                    cv::rectangle(overlapImg, cv::Point(0, 0), cv::Point(overlapImg.cols-1, overlapImg.rows-1), red, 2);
-//                }
-//                if (drawOver) {
-//                    // cv::warpPerspective(TODO);
-//                }
-//            }
+            // TODO кроме того будет быстрее работать если вы будете использовать релизную сборку вместо Debug:
+            // см. "Как ускорить программу" - https://www.polarnick.com/blogs/239/2021/school239_11_2021_2022/2021/10/05/lesson5-disjoint-set.html
         }
+        auto detecttime0 = std::chrono::steady_clock::now();
+        std::vector<cv::KeyPoint> keypoints0, keypoints1; // здесь будет храниться список ключевых точек
+        cv::Mat descriptors0, descriptors1; // здесь будут зраниться дескрипторы этих ключевых точек
+        std::cout << "Detecting SIFT keypoints and describing them (computing their descriptors)..." << std::endl;
+        detector->detectAndCompute(currentFrame, cv::noArray(), keypoints0, descriptors0);
+        detector->detectAndCompute(imgForDetection, cv::noArray(), keypoints1, descriptors1);
+        std::cout << "Keypoints initially: " << keypoints0.size() << ", " << keypoints1.size() << "..."
+                  << std::endl;
+        auto detecttime1 = std::chrono::steady_clock::now();
+        auto matchtime0 = std::chrono::steady_clock::now();
+        std::vector<std::vector<cv::DMatch>> matches01;
+        matcher->knnMatch(descriptors0, descriptors1, matches01, 2);
+        auto matchtime1 = std::chrono::steady_clock::now();
+        auto filtertime0 = std::chrono::steady_clock::now();
+        std::vector<cv::Point2f> points0;
+        std::vector<cv::Point2f> points1;
+        double med = 0;
+        {
+            std::vector<double> distances;
+            for (int i = 0; i < matches01.size(); ++i) {
+                distances.push_back(matches01[i][0].distance);
+            }
+            std::sort(distances.begin(), distances.end()); // GOOGLE: "cpp how to sort vector"
+            std::cout << "distances min/median/max: " << distances[0] << "/" << distances[distances.size() / 2]
+                      << "/" << distances[distances.size() - 1] << std::endl;
+            med = distances[distances.size() / 2] * 0.8;
+        }
+        for (int i = 0; i < keypoints0.size(); ++i) {
+            int fromKeyPoint0 = matches01[i][0].queryIdx;
+            int toKeyPoint1Best = matches01[i][0].trainIdx;
+            float distanceBest = matches01[i][0].distance;
+            rassert(fromKeyPoint0 == i, 348723974920074);
+            rassert(toKeyPoint1Best < keypoints1.size(), 347832974820076);
+
+            int toKeyPoint1SecondBest = matches01[i][1].trainIdx;
+            float distanceSecondBest = matches01[i][1].distance;
+            rassert(toKeyPoint1SecondBest < keypoints1.size(), 3482047920081);
+            rassert(distanceBest <= distanceSecondBest, 34782374920082);
+
+            if (distanceBest < med && distanceBest < 0.7 * distanceSecondBest) {
+                points0.push_back(keypoints0[i].pt);
+                points1.push_back(keypoints1[toKeyPoint1Best].pt);
+            }
+        }
+        rassert(points0.size() == points1.size(), 234723947289089);
+        std::cout << points0.size() << "/" << keypoints0.size() << " good matches left" << std::endl;
+        std::vector<unsigned char> inliersMask;
+        const double ransacReprojThreshold = 3.0;
+        auto filtertime1 = std::chrono::steady_clock::now();
+        if (points0.size() > 30) {
+            cv::Mat H01 = cv::findHomography(points0, points1, cv::RANSAC, ransacReprojThreshold, inliersMask).inv();
+            if (H01.empty()) {
+                // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
+                // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
+                std::cout << "FAIL 24123422!" << std::endl;
+            } else {
+                cv::Mat overlapImg = imgToDraw.clone();
+                if (drawDebug) {
+                    // рисуем красный край у накладываемой картинки
+                    cv::Scalar red(0, 0, 255);
+                    cv::rectangle(overlapImg, cv::Point(0, 0), cv::Point(overlapImg.cols - 1, overlapImg.rows - 1),
+                                  red, 2);
+                }
+                if (drawOver) {
+                    cv::warpPerspective(overlapImg, mainWindowImage, H01, mainWindowImage.size(), cv::INTER_LINEAR,
+                                        cv::BORDER_TRANSPARENT);
+                }
+            }
+        }
+
 
         if (drawDebug) {
             int textYOffset = 0;
 
             auto frameProcessingEndTime = std::chrono::steady_clock::now();
             int timeForFrame = std::chrono::duration_cast<std::chrono::milliseconds>(frameProcessingEndTime - frameProcessingStartTime).count();
+            int timeForDetect = std::chrono::duration_cast<std::chrono::milliseconds>(detecttime1 - detecttime0).count();
+            int timeForMatch = std::chrono::duration_cast<std::chrono::milliseconds>(matchtime1 - matchtime0).count();
+            int timeForFilter = std::chrono::duration_cast<std::chrono::milliseconds>(filtertime1 - filtertime0).count();
             int fps;
             if (timeForFrame == 0) {
                 fps = 99999;
@@ -133,13 +158,11 @@ void run() {
             }
             drawText(mainWindowImage, std::to_string(fps) + " FPS", 0.5, textYOffset);
 
-            // TODO добавьте короткую справку про кнопки управления
-            drawText(mainWindowImage, "Controls: ", 0.5, textYOffset);
+            drawText(mainWindowImage, "Controls: 1 - detect cur 2 - replace with cur 3 - hide debug h - hide", 0.5, textYOffset);
 
-            // TODO добавьте разбивку сколько времени занимает детектирование, сколько матчинг, сколько фильтрация (по аналогии с тем как выше замерялось время на обработку для рассчета FPS):
-//            drawText(mainWindowImage, "Timings: " + std::to_string(timeForFrame) + " ms = "
-//                    + std::to_string(detect_ms) + " ms detect + " + TODO,
-//                    0.5, textYOffset);
+            drawText(mainWindowImage, "Timings: " + std::to_string(timeForFrame) + " ms = "
+                    + std::to_string(timeForDetect) + " ms detect + " + std::to_string(timeForMatch) + " ms match + " + std::to_string(timeForFilter) + " ms filter",
+                    0.5, textYOffset);
         }
 
         // Рисуем все три окошка:
@@ -153,17 +176,16 @@ void run() {
             // прошло 5 миллисекунд но ничего не было нажато - значит идем обрабатывать следующий кадр с веб. камеры
         } else if (key == 27) { // Esc - выключаем программу
             break;
-//        } else if (useWebcam && key == TODO) {
-//            // TODO если пользователь нажал кнопку 1 (как исследовать какой код у такой кнопки? опытным путем!) - текущий кадр надо использовать как imgForDetection
-//            // ... = currentFrame.clone();
-//        } else if (useWebcam && key == TODO) {
-//            // TODO если пользователь нажал кнопку 2 - текущий кадр надо использовать как imgToDraw
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку H (Hide) - выключите/включите рисовать картинку поверх (т.е. drawOver)
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку 3 - включить/выключить отрисовку разной отладочной информации (т.е. drawDebug)
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку S (SIFT) - включить/выключить использование SIFT/ORB
+        } else if (useWebcam && key == 49) {
+            imgForDetection = currentFrame.clone();
+        } else if (useWebcam && key == 50) {
+            imgToDraw = currentFrame.clone();
+        } else if (key == 104) {
+            drawOver = !drawOver;
+        } else if (key == 51) {
+            drawDebug = !drawDebug;
+        } else if (key == 115) {
+            // TODO если пользователь нажал кнопку S (SIFT) - включить/выключить использование SIFT/ORB
         } else {
             std::cerr << "UKNOWN KEY " << key << " WAS PRESSED" << std::endl;
         }

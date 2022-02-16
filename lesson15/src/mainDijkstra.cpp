@@ -2,7 +2,11 @@
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
-
+#include <set>
+#define x first
+#define y second
+#define int long long
+using namespace std;
 int debugPoint(int line) {
     if (line < 0)
         return 0;
@@ -15,13 +19,17 @@ int debugPoint(int line) {
 
 
 struct Edge {
-    int u, v; // номера вершин которые это ребро соединяет
+    signed u, v; // номера вершин которые это ребро соединяет
     int w; // длина ребра (т.е. насколько длинный путь предстоит преодолеть переходя по этому ребру между вершинами)
 
-    Edge(int u, int v, int w) : u(u), v(v), w(w)
+    Edge(signed u, signed v, int w) : u(u), v(v), w(w)
     {}
 };
 
+signed * previ;
+int * mind;
+
+vector<Edge>* e;
 void run() {
     // https://codeforces.com/problemset/problem/20/C?locale=ru
     // Не требуется сделать оптимально быструю версию, поэтому если вы получили:
@@ -30,52 +38,78 @@ void run() {
     //
     // То все замечательно и вы молодец.
 
-    int nvertices, medges;
-    std::cin >> nvertices;
-    std::cin >> medges;
+    int n, m;
+    cin >> n;
+    cin >> m;
 
-    std::vector<std::vector<Edge>> edges_by_vertex(nvertices);
-    for (int i = 0; i < medges; ++i) {
+    e = new vector<Edge>[n];
+    for (int i = 0; i < m; ++i) {
         int ai, bi, w;
         std::cin >> ai >> bi >> w;
-        rassert(ai >= 1 && ai <= nvertices, 23472894792020);
-        rassert(bi >= 1 && bi <= nvertices, 23472894792021);
+        rassert(ai >= 1 && ai <= n, 23472894792020);
+        rassert(bi >= 1 && bi <= n, 23472894792021);
 
         ai -= 1;
         bi -= 1;
-        rassert(ai >= 0 && ai < nvertices, 3472897424024);
-        rassert(bi >= 0 && bi < nvertices, 3472897424025);
+        rassert(ai >= 0 && ai < n, 3472897424024);
+        rassert(bi >= 0 && bi < n, 3472897424025);
 
-        Edge edgeAB(ai, bi, w);
-        edges_by_vertex[ai].push_back(edgeAB);
+        e[ai].push_back(Edge(ai, bi, w));
 
-        edges_by_vertex[bi].push_back(Edge(bi, ai, w)); // а тут - обратное ребро, можно конструировать объект прямо в той же строчке где он и потребовался
+        e[bi].push_back(Edge(bi, ai, w));
     }
 
-    const int start = 0;
-    const int finish = nvertices - 1;
+    const int s = 0;
+    const int t = n - 1;
 
-    const int INF = std::numeric_limits<int>::max();
+    int* mind = new int[n];
+    int * previ = new int[n];
 
-    std::vector<int> distances(nvertices, INF);
-    // TODO ...
+    set<pair<int, int>> now;
+    mind[s] = 0;
+    previ[s] = -1;
+    now.insert({mind[s], s});
+    for(int i = 0; i<n; i++){
+        if(i!=s){
+            mind[i] = 10000000000000ll;
+            now.insert({mind[i], i});
+            previ[i] = -1;
+        }
+    }
 
-//    while (true) {
-//
-//    }
+    while(!now.empty()){
+        int v = (*now.begin()).y;
+        int len = (*now.begin()).x;
+        now.erase(now.begin());
+        for(auto z:e[v]){
+            if(len+z.w<mind[z.v]){
+                now.erase({mind[z.v], z.v});
+                mind[z.v] = len+z.w;
+                previ[z.v] = v;
+                now.insert({mind[z.v], z.v});
+            }
 
-//    if (...) {
-//        ...
-//        for (...) {
-//            std::cout << (path[i] + 1) << " ";
-//        }
-//        std::cout << std::endl;
-//    } else {
-//        std::cout << -1 << std::endl;
-//    }
+        }
+    }
+
+    if (previ[t]!=-1) {
+        int now = t;
+        vector<int> ans;
+        while(now!=-1) {
+            ans.push_back(now+1);
+            now = previ[now];
+        }
+        reverse(ans.begin(), ans.end());
+        for(auto z:ans){
+            cout << z << " ";
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << -1 << std::endl;
+    }
 }
 
-int main() {
+signed main() {
     try {
         run();
 

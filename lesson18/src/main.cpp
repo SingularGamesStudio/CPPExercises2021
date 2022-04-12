@@ -18,14 +18,23 @@ using namespace std;
 using namespace cv;
 
 // Эта функция говорит нам правда ли пиксель отмаскирован, т.е. отмечен как "удаленный", т.е. белый
-bool isPixelMasked(cv::Mat mask, int j, int i) {
-    rassert(j >= 0 && j < mask.rows, 372489347280017);
-    rassert(i >= 0 && i < mask.cols, 372489347280018);
+bool isPixelMasked(cv::Mat mask, int i, int j) {
+    rassert(i >= 0 && i < mask.rows, 372489347280017);
+    rassert(j >= 0 && j < mask.cols, 372489347280018);
     rassert(mask.type() == CV_8UC3, 2348732984792380019);
     Vec3b color = mask.at<Vec3b>(i, j);
     if(color[0]+color[1]+color[2]>100)
         return 1;
     return 0;
+}
+default_random_engine generator;
+normal_distribution<double> rndNorm(5.0,2.0);
+int getNorm(int w, int x0){
+    double gen = (rndNorm(generator)/10-0.5)*(w/3);
+    while(x0+int(gen)<0 || x0+int(gen)>=w){
+        gen = (rndNorm(generator)/10-0.5)*(w/3);
+    }
+    return x0+int(gen);
 }
 mt19937 rnd(42);
 void run(int caseNumber, std::string caseName) {
@@ -66,19 +75,19 @@ void run(int caseNumber, std::string caseName) {
             std::filesystem::create_directory(nowdir); // то создаем ее
         }
         // сохраняем в папку с результатами оригинальную картинку и маску
-        cv::imwrite(nowdir + "0original.png", original);
+        cv::imwrite(nowdir + "0original.png", img);
         cv::imwrite(nowdir + "1mask.png", mask);
-
+        rassert(mask.cols==img.cols && mask.rows==img.rows, 1283912);
         int cntmasked = 0;
         for(int i = 0; i<mask.rows; i++){
             for(int j = 0; j<mask.cols; j++){
                 if(isPixelMasked(mask, i, j)){
-                    img.at<Vec3b>(i, j) = Vec3b(rnd()%255, rnd()%255, rnd()%255);
+                    img.at<Vec3b>(i, j) = Vec3b(rnd() % 255, rnd() % 255, rnd() % 255);
                     cntmasked++;
                 }
             }
         }
-        cout << "Number of masked pixels: " <<  cntmasked << "/" << mask.rows*mask.cols << " = " << cntmasked*100.0/mask.rows/mask.cols << "%";
+        cout << "Layer " << layer+1 << "/" << pyramid.size() << ": " "Number of masked pixels: " <<  cntmasked << "/" << mask.rows*mask.cols << " = " << cntmasked*100.0/mask.rows/mask.cols << "%\n";
 
         cv::Mat shifts(img.rows, img.cols, CV_32SC2, cv::Scalar(0, 0)); // матрица хранящая смещения, изначально заполнена парами нулей
         if(layer!=0){
@@ -88,13 +97,136 @@ void run(int caseNumber, std::string caseName) {
                 }
             }
         }
-        for(int i = 0; i<mask.rows; i++){
-            for(int j = 0; j<mask.cols; j++){
+        const int NofTheories = 20;//кратно 5
+        const int iters = 100;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
+        const int kernel = 2;//окно (2*kernel+1 X 2*kernel+1)
+        const int emptyloss = 2500;
+        const int rectrust = 3;
+        for(int iter = 0; iter<iters; iter++) {
+            for (int i0 = 0; i0 < mask.rows; i0++) {
+                for (int j0 = 0; j0 < mask.cols; j0++) {
+                    int i = i0;
+                    int j = j0;
+                    if (iter % 2){
+                        i = mask.rows-1-i;
+                        j = mask.cols-1-j;
+                    }
+                    vector<pair<int, int>> theories;
+                    if(i+1<mask.rows){
+                        Vec2i vec = shifts.at<Vec2i>(i+1, j);
+                        theories.push_back({i+1+vec[0], j+vec[1]});
+                        for(int v = 0; v<NofTheories/5; v++){
+                            theories.push_back({getNorm(mask.rows, i+1+vec[0]), getNorm(mask.cols, j+vec[1])});
+                        }
+                    }
+                    if(i-1>=0){
+                        Vec2i vec = shifts.at<Vec2i>(i-1, j);
+                        theories.push_back({i-1+vec[0], j+vec[1]});
+                        for(int v = 0; v<NofTheories/5; v++){
+                            theories.push_back({getNorm(mask.rows, i-1+vec[0]), getNorm(mask.cols, j+vec[1])});
+                        }
+                    }
+                    if(j-1>=0){
+                        Vec2i vec = shifts.at<Vec2i>(i, j-1);
+                        theories.push_back({i+vec[0], j-1+vec[1]});
+                        for(int v = 0; v<NofTheories/5; v++){
+                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j-1+vec[1])});
+                        }
+                    }
+                    if(j+1<mask.cols){
+                        Vec2i vec = shifts.at<Vec2i>(i, j+1);
+                        theories.push_back({i+vec[0], j+1+vec[1]});
+                        for(int v = 0; v<NofTheories/5; v++){
+                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j+1+vec[1])});
+                        }
+                    }
+                    if(true){
+                        Vec2i vec = shifts.at<Vec2i>(i, j);
+                        theories.push_back({i+vec[0], j+vec[1]});
+                        for(int v = 0; v<NofTheories/5; v++){
+                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j+vec[1])});
+                        }
+                    }
 
+                    int cur = 0;
+                    int x = i+shifts.at<Vec2i>(i, j)[0];
+                    int y = j+shifts.at<Vec2i>(i, j)[1];
+                    for(int di = -kernel; di<=kernel; di++){
+                        for(int dj = -kernel; dj<=kernel; dj++){
+                            if(i+di>=mask.rows || i+di<0 || j+dj>=mask.cols || j+dj<0)
+                                continue;
+                            else if(x+di>=mask.rows || x+di<0 || y+dj>=mask.cols || y+dj<0)
+                                cur+=emptyloss;
+                            else if(isPixelMasked(mask, x+di, y+dj))
+                                cur = INT_MIN;
+                            else if(isPixelMasked(mask, i+di, j+dj)){
+                                Vec2i recpos = shifts.at<Vec2i>(i+di, j+dj)[0];//recursively looking at link
+                                recpos[0]+=i+di;
+                                recpos[1]+=j+dj;
+                                if(isPixelMasked(mask, recpos[0], recpos[1]))
+                                    cur+=emptyloss;
+                                else {
+                                    Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
+                                    Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
+                                    cur+=rectrust*((t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]));
+                                }
+                            } else {
+                                Vec3b t1 = img.at<Vec3b>(i+di, j+dj);
+                                Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
+                                cur+=(t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]);
+                            }
+                        }
+                    }
+                    for(pair<int, int> now:theories){
+                        int nw = 0;
+                        int x = now.first;
+                        int y = now.second;
+                        for(int di = -kernel; di<=kernel; di++){
+                            for(int dj = -kernel; dj<=kernel; dj++){
+                                if(i+di>=mask.rows || i+di<0 || j+dj>=mask.cols || j+dj<0)
+                                    continue;
+                                else if(x+di>=mask.rows || x+di<0 || y+dj>=mask.cols || y+dj<0)
+                                    nw+=emptyloss;
+                                else if(isPixelMasked(mask, x+di, y+dj))
+                                    nw = INT_MIN;
+                                else if(isPixelMasked(mask, i+di, j+dj)){
+                                    Vec2i recpos = shifts.at<Vec2i>(i+di, j+dj)[0];//recursively looking at link
+                                    recpos[0]+=i+di;
+                                    recpos[1]+=j+dj;
+                                    if(isPixelMasked(mask, recpos[0], recpos[1]))
+                                        nw+=emptyloss;
+                                    else {
+                                        Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
+                                        Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
+                                        nw+=rectrust*((t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]));
+                                    }
+                                } else {
+                                    Vec3b t1 = img.at<Vec3b>(i+di, j+dj);
+                                    Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
+                                    nw+=(t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]);
+                                }
+                            }
+                        }
+                        if(nw<cur){
+                            shifts.at<Vec2i>(i, j) = Vec2i(x-i, y-j);
+                            cur = nw;
+                        }
+                    }
+                }
             }
         }
         shiftslast = shifts.clone();
+        Mat res = img.clone();
+        for (int i = 0; i < mask.rows; i++) {
+            for (int j = 0; j < mask.cols; j++) {
+                if(isPixelMasked(mask, i, j)){
+                    res.at<Vec3b>(i, j) = img.at<Vec3b>(shifts.at<Vec2i>(i, j)[0], shifts.at<Vec2i>(i, j)[1]);
+                }
+            }
+        }
+        cv::imwrite(nowdir + "2res.png", res);
     }
+
 }
 
 
@@ -102,10 +234,10 @@ int main() {
     try {
         run(1, "mic");
 //        run(2, "flowers");
-//        run(3, "baloons");
-//        run(4, "brickwall");
-//        run(5, "old_photo");
-//        run(6, "your_data");
+        run(3, "baloons");
+        run(4, "brickwall");
+        run(5, "old_photo");
+        run(6, "your_data");
 
         return 0;
     } catch (const std::exception &e) {

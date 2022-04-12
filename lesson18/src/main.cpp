@@ -30,9 +30,9 @@ bool isPixelMasked(cv::Mat mask, int i, int j) {
 default_random_engine generator;
 normal_distribution<double> rndNorm(5.0,2.0);
 int getNorm(int w, int x0){
-    double gen = (rndNorm(generator)/10-0.5)*(w/3);
+    double gen = (rndNorm(generator)/10-0.5)*w;
     while(x0+int(gen)<0 || x0+int(gen)>=w){
-        gen = (rndNorm(generator)/10-0.5)*(w/3);
+        gen = (rndNorm(generator)/10-0.5)*w;
     }
     return x0+int(gen);
 }
@@ -82,7 +82,7 @@ void run(int caseNumber, std::string caseName) {
         for(int i = 0; i<mask.rows; i++){
             for(int j = 0; j<mask.cols; j++){
                 if(isPixelMasked(mask, i, j)){
-                    img.at<Vec3b>(i, j) = Vec3b(rnd() % 255, rnd() % 255, rnd() % 255);
+                    img.at<Vec3b>(i, j) = Vec3b(0, 0, 0);
                     cntmasked++;
                 }
             }
@@ -98,118 +98,131 @@ void run(int caseNumber, std::string caseName) {
             }
         }
         const int NofTheories = 20;//кратно 5
-        const int iters = 100;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
-        const int kernel = 2;//окно (2*kernel+1 X 2*kernel+1)
+        const int iters = 200;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
+        const int kernel = 5;//окно (2*kernel+1 X 2*kernel+1)
         const int emptyloss = 2500;
-        const int rectrust = 3;
+        const int rectrust = 10;
         for(int iter = 0; iter<iters; iter++) {
             for (int i0 = 0; i0 < mask.rows; i0++) {
                 for (int j0 = 0; j0 < mask.cols; j0++) {
+
                     int i = i0;
                     int j = j0;
                     if (iter % 2){
                         i = mask.rows-1-i;
                         j = mask.cols-1-j;
                     }
-                    vector<pair<int, int>> theories;
-                    if(i+1<mask.rows){
-                        Vec2i vec = shifts.at<Vec2i>(i+1, j);
-                        theories.push_back({i+1+vec[0], j+vec[1]});
-                        for(int v = 0; v<NofTheories/5; v++){
-                            theories.push_back({getNorm(mask.rows, i+1+vec[0]), getNorm(mask.cols, j+vec[1])});
-                        }
-                    }
-                    if(i-1>=0){
-                        Vec2i vec = shifts.at<Vec2i>(i-1, j);
-                        theories.push_back({i-1+vec[0], j+vec[1]});
-                        for(int v = 0; v<NofTheories/5; v++){
-                            theories.push_back({getNorm(mask.rows, i-1+vec[0]), getNorm(mask.cols, j+vec[1])});
-                        }
-                    }
-                    if(j-1>=0){
-                        Vec2i vec = shifts.at<Vec2i>(i, j-1);
-                        theories.push_back({i+vec[0], j-1+vec[1]});
-                        for(int v = 0; v<NofTheories/5; v++){
-                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j-1+vec[1])});
-                        }
-                    }
-                    if(j+1<mask.cols){
-                        Vec2i vec = shifts.at<Vec2i>(i, j+1);
-                        theories.push_back({i+vec[0], j+1+vec[1]});
-                        for(int v = 0; v<NofTheories/5; v++){
-                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j+1+vec[1])});
-                        }
-                    }
-                    if(true){
-                        Vec2i vec = shifts.at<Vec2i>(i, j);
-                        theories.push_back({i+vec[0], j+vec[1]});
-                        for(int v = 0; v<NofTheories/5; v++){
-                            theories.push_back({getNorm(mask.rows, i+vec[0]), getNorm(mask.cols, j+vec[1])});
-                        }
-                    }
-
-                    int cur = 0;
-                    int x = i+shifts.at<Vec2i>(i, j)[0];
-                    int y = j+shifts.at<Vec2i>(i, j)[1];
-                    for(int di = -kernel; di<=kernel; di++){
-                        for(int dj = -kernel; dj<=kernel; dj++){
-                            if(i+di>=mask.rows || i+di<0 || j+dj>=mask.cols || j+dj<0)
-                                continue;
-                            else if(x+di>=mask.rows || x+di<0 || y+dj>=mask.cols || y+dj<0)
-                                cur+=emptyloss;
-                            else if(isPixelMasked(mask, x+di, y+dj))
-                                cur = INT_MIN;
-                            else if(isPixelMasked(mask, i+di, j+dj)){
-                                Vec2i recpos = shifts.at<Vec2i>(i+di, j+dj)[0];//recursively looking at link
-                                recpos[0]+=i+di;
-                                recpos[1]+=j+dj;
-                                if(isPixelMasked(mask, recpos[0], recpos[1]))
-                                    cur+=emptyloss;
-                                else {
-                                    Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
-                                    Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
-                                    cur+=rectrust*((t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]));
-                                }
-                            } else {
-                                Vec3b t1 = img.at<Vec3b>(i+di, j+dj);
-                                Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
-                                cur+=(t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]);
+                    if(isPixelMasked(mask, i, j)) {
+                        vector<pair<int, int>> theories;
+                        if (i + 1 < mask.rows) {
+                            Vec2i vec = shifts.at<Vec2i>(i + 1, j);
+                            theories.push_back({i + 1 + vec[0], j + vec[1]});
+                            for (int v = 0; v < NofTheories / 5; v++) {
+                                theories.push_back(
+                                        {getNorm(mask.rows, i + 1 + vec[0]), getNorm(mask.cols, j + vec[1])});
                             }
                         }
-                    }
-                    for(pair<int, int> now:theories){
-                        int nw = 0;
-                        int x = now.first;
-                        int y = now.second;
-                        for(int di = -kernel; di<=kernel; di++){
-                            for(int dj = -kernel; dj<=kernel; dj++){
-                                if(i+di>=mask.rows || i+di<0 || j+dj>=mask.cols || j+dj<0)
+                        if (i - 1 >= 0) {
+                            Vec2i vec = shifts.at<Vec2i>(i - 1, j);
+                            theories.push_back({i - 1 + vec[0], j + vec[1]});
+                            for (int v = 0; v < NofTheories / 5; v++) {
+                                theories.push_back(
+                                        {getNorm(mask.rows, i - 1 + vec[0]), getNorm(mask.cols, j + vec[1])});
+                            }
+                        }
+                        if (j - 1 >= 0) {
+                            Vec2i vec = shifts.at<Vec2i>(i, j - 1);
+                            theories.push_back({i + vec[0], j - 1 + vec[1]});
+                            for (int v = 0; v < NofTheories / 5; v++) {
+                                theories.push_back(
+                                        {getNorm(mask.rows, i + vec[0]), getNorm(mask.cols, j - 1 + vec[1])});
+                            }
+                        }
+                        if (j + 1 < mask.cols) {
+                            Vec2i vec = shifts.at<Vec2i>(i, j + 1);
+                            theories.push_back({i + vec[0], j + 1 + vec[1]});
+                            for (int v = 0; v < NofTheories / 5; v++) {
+                                theories.push_back(
+                                        {getNorm(mask.rows, i + vec[0]), getNorm(mask.cols, j + 1 + vec[1])});
+                            }
+                        }
+                        if (true) {
+                            Vec2i vec = shifts.at<Vec2i>(i, j);
+                            theories.push_back({i + vec[0], j + vec[1]});
+                            for (int v = 0; v < NofTheories / 5; v++) {
+                                theories.push_back({getNorm(mask.rows, i + vec[0]), getNorm(mask.cols, j + vec[1])});
+                            }
+                        }
+
+                        int cur = 0;
+                        int x = i + shifts.at<Vec2i>(i, j)[0];
+                        int y = j + shifts.at<Vec2i>(i, j)[1];
+                        for (int di = -kernel; di <= kernel; di++) {
+                            for (int dj = -kernel; dj <= kernel; dj++) {
+                                if (i + di >= mask.rows || i + di < 0 || j + dj >= mask.cols || j + dj < 0)
                                     continue;
-                                else if(x+di>=mask.rows || x+di<0 || y+dj>=mask.cols || y+dj<0)
-                                    nw+=emptyloss;
-                                else if(isPixelMasked(mask, x+di, y+dj))
-                                    nw = INT_MIN;
-                                else if(isPixelMasked(mask, i+di, j+dj)){
-                                    Vec2i recpos = shifts.at<Vec2i>(i+di, j+dj)[0];//recursively looking at link
-                                    recpos[0]+=i+di;
-                                    recpos[1]+=j+dj;
-                                    if(isPixelMasked(mask, recpos[0], recpos[1]))
-                                        nw+=emptyloss;
+                                else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0)
+                                    cur += emptyloss;
+                                else if (isPixelMasked(mask, x + di, y + dj))
+                                    cur = INT_MIN;
+                                else if (isPixelMasked(mask, i + di, j + dj)) {
+                                    Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj)[0];//recursively looking at link
+                                    recpos[0] += i + di;
+                                    recpos[1] += j + dj;
+                                    if (isPixelMasked(mask, recpos[0], recpos[1]))
+                                        cur += emptyloss;
                                     else {
                                         Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
-                                        Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
-                                        nw+=rectrust*((t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]));
+                                        Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
+                                        cur += rectrust *
+                                               ((t1[0] - t2[0]) * (t1[0] - t2[0]) + (t1[1] - t2[1]) * (t1[1] - t2[1]) +
+                                                (t1[2] - t2[2]) * (t1[2] - t2[2]));
                                     }
                                 } else {
-                                    Vec3b t1 = img.at<Vec3b>(i+di, j+dj);
-                                    Vec3b t2 = img.at<Vec3b>(x+di, y+dj);
-                                    nw+=(t1[0]-t2[0])*(t1[0]-t2[0])+(t1[1]-t2[1])*(t1[1]-t2[1])+(t1[2]-t2[2])*(t1[2]-t2[2]);
+                                    Vec3b t1 = img.at<Vec3b>(i + di, j + dj);
+                                    Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
+                                    cur += (t1[0] - t2[0]) * (t1[0] - t2[0]) + (t1[1] - t2[1]) * (t1[1] - t2[1]) +
+                                           (t1[2] - t2[2]) * (t1[2] - t2[2]);
                                 }
                             }
                         }
-                        if(nw<cur){
-                            shifts.at<Vec2i>(i, j) = Vec2i(x-i, y-j);
-                            cur = nw;
+                        for (pair<int, int> now: theories) {
+                            int nw = 0;
+                            int x = now.first;
+                            int y = now.second;
+                            for (int di = -kernel; di <= kernel; di++) {
+                                for (int dj = -kernel; dj <= kernel; dj++) {
+                                    if (i + di >= mask.rows || i + di < 0 || j + dj >= mask.cols || j + dj < 0)
+                                        continue;
+                                    else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0)
+                                        nw += emptyloss;
+                                    else if (isPixelMasked(mask, x + di, y + dj))
+                                        nw = INT_MIN;
+                                    else if (isPixelMasked(mask, i + di, j + dj)) {
+                                        Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj)[0];//recursively looking at link
+                                        recpos[0] += i + di;
+                                        recpos[1] += j + dj;
+                                        if (isPixelMasked(mask, recpos[0], recpos[1]))
+                                            nw += emptyloss;
+                                        else {
+                                            Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
+                                            Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
+                                            nw += rectrust * ((t1[0] - t2[0]) * (t1[0] - t2[0]) +
+                                                              (t1[1] - t2[1]) * (t1[1] - t2[1]) +
+                                                              (t1[2] - t2[2]) * (t1[2] - t2[2]));
+                                        }
+                                    } else {
+                                        Vec3b t1 = img.at<Vec3b>(i + di, j + dj);
+                                        Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
+                                        nw += (t1[0] - t2[0]) * (t1[0] - t2[0]) + (t1[1] - t2[1]) * (t1[1] - t2[1]) +
+                                              (t1[2] - t2[2]) * (t1[2] - t2[2]);
+                                    }
+                                }
+                            }
+                            if (nw < cur) {
+                                shifts.at<Vec2i>(i, j) = Vec2i(x - i, y - j);
+                                cur = nw;
+                            }
                         }
                     }
                 }

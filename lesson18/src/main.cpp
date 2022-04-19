@@ -36,6 +36,7 @@ int getNorm(int w, int x0){
     }
     return x0+int(gen);
 }
+
 mt19937 rnd(42);
 void run(int caseNumber, std::string caseName) {
     int test[20];
@@ -110,11 +111,11 @@ void run(int caseNumber, std::string caseName) {
                 }
             }
         }
-        const int NofTheories = 60;//кратно 5
-        const int iters = 500;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
+        const int NofTheories = 30;//кратно 5
+        const int iters = 100;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
         const int kernel = 3;//окно (2*kernel+1 X 2*kernel+1)
         const int emptyloss = 2500;
-        const int rectrust = 3;
+        const float rectrust = 0.3;
         for(int iter = 0; iter<iters; iter++) {
             for (int i0 = 0; i0 < mask.rows; i0++) {
                 for (int j0 = 0; j0 < mask.cols; j0++) {
@@ -182,14 +183,24 @@ void run(int caseNumber, std::string caseName) {
                                     Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj);//recursively looking at link
                                     recpos[0] += i + di;
                                     recpos[1] += j + dj;
+                                    //<костыль>
+                                    if(recpos[0]<0)
+                                        recpos[0] = 0;
+                                    if(recpos[0]>=mask.rows)
+                                        recpos[0] = mask.rows-1;
+                                    if(recpos[1]<0)
+                                        recpos[1] = 0;
+                                    if(recpos[1]>=mask.cols)
+                                        recpos[1] = mask.cols-1;
+                                    //</костыль>
                                     if (isPixelMasked(mask, recpos[0], recpos[1]))
                                         cur += emptyloss;
                                     else {
                                         Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
                                         Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
-                                        cur += rectrust *
+                                        cur += (int)(rectrust *
                                                ((t1[0] - t2[0]) * (t1[0] - t2[0]) + (t1[1] - t2[1]) * (t1[1] - t2[1]) +
-                                                (t1[2] - t2[2]) * (t1[2] - t2[2]));
+                                                (t1[2] - t2[2]) * (t1[2] - t2[2])));
                                     }
                                 } else {
                                     Vec3b t1 = img.at<Vec3b>(i + di, j + dj);
@@ -218,14 +229,24 @@ void run(int caseNumber, std::string caseName) {
                                         Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj);//recursively looking at link
                                         recpos[0] += i + di;
                                         recpos[1] += j + dj;
+                                        //<костыль>
+                                        if(recpos[0]<0)
+                                            recpos[0] = 0;
+                                        if(recpos[0]>=mask.rows)
+                                            recpos[0] = mask.rows-1;
+                                        if(recpos[1]<0)
+                                            recpos[1] = 0;
+                                        if(recpos[1]>=mask.cols)
+                                            recpos[1] = mask.cols-1;
+                                        //</костыль>
                                         if (isPixelMasked(mask, recpos[0], recpos[1]))
                                             nw += emptyloss;
                                         else {
                                             Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
                                             Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
-                                            nw += rectrust * ((t1[0] - t2[0]) * (t1[0] - t2[0]) +
+                                            nw += (int)(rectrust * ((t1[0] - t2[0]) * (t1[0] - t2[0]) +
                                                               (t1[1] - t2[1]) * (t1[1] - t2[1]) +
-                                                              (t1[2] - t2[2]) * (t1[2] - t2[2]));
+                                                              (t1[2] - t2[2]) * (t1[2] - t2[2])));
                                         }
                                     } else {
                                         Vec3b t1 = img.at<Vec3b>(i + di, j + dj);
@@ -268,11 +289,11 @@ void run(int caseNumber, std::string caseName) {
 
 int main() {
     try {
-        //run(1, "mic");
+        run(1, "mic");
         run(2, "flowers");
-        //run(3, "baloons");
-        //run(4, "brickwall");
-        //run(5, "old_photo");
+        run(3, "baloons");
+        run(4, "brickwall");
+        run(5, "old_photo");
         //run(6, "your_data");
 
         return 0;

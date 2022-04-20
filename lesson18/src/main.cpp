@@ -84,6 +84,9 @@ void run(int caseNumber, std::string caseName) {
 
         img = pyramid[layer].first;
         mask = pyramid[layer].second;
+        Mat mask1;
+        dilate(mask, mask1, Mat());
+
         string nowdir = resultsDir+"/layer_"+ to_string(layer)+"/";
         if (!std::filesystem::exists(nowdir)) { // если папка еще не создана
             std::filesystem::create_directory(nowdir); // то создаем ее
@@ -91,6 +94,7 @@ void run(int caseNumber, std::string caseName) {
         // сохраняем в папку с результатами оригинальную картинку и маску
         cv::imwrite(nowdir + "0original.png", img);
         cv::imwrite(nowdir + "1mask.png", mask);
+        cv::imwrite(nowdir + "1maskdilated.png", mask1);
         rassert(mask.cols==img.cols && mask.rows==img.rows, 1283912);
         int cntmasked = 0;
         for(int i = 0; i<mask.rows; i++){
@@ -115,7 +119,7 @@ void run(int caseNumber, std::string caseName) {
         const int iters = 100;////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////params!!!!!!!
         const int kernel = 3;//окно (2*kernel+1 X 2*kernel+1)
         const int emptyloss = 2500;
-        const float rectrust = 0.3;
+        const float rectrust = 0.02;
         for(int iter = 0; iter<iters; iter++) {
             for (int i0 = 0; i0 < mask.rows; i0++) {
                 for (int j0 = 0; j0 < mask.cols; j0++) {
@@ -126,9 +130,9 @@ void run(int caseNumber, std::string caseName) {
                         i = mask.rows-1-i;
                         j = mask.cols-1-j;
                     }
-                    if(isPixelMasked(mask, i, j)) {
+                    if(isPixelMasked(mask1, i, j)) {
                         vector<pair<int, int>> theories;
-                        if (i + 1 < mask.rows && isPixelMasked(mask, i+1, j)) {
+                        if (i + 1 < mask.rows && isPixelMasked(mask1, i+1, j)) {
                             Vec2i vec = shifts.at<Vec2i>(i + 1, j);
                             theories.push_back({i + 1 + vec[0], j + vec[1]});
                             for (int v = 0; v < NofTheories / 5; v++) {
@@ -136,7 +140,7 @@ void run(int caseNumber, std::string caseName) {
                                         {getNorm(mask.rows, i + 1 + vec[0]), getNorm(mask.cols, j + vec[1])});
                             }
                         }
-                        if (i - 1 >= 0 && isPixelMasked(mask, i-1, j)) {
+                        if (i - 1 >= 0 && isPixelMasked(mask1, i-1, j)) {
                             Vec2i vec = shifts.at<Vec2i>(i - 1, j);
                             theories.push_back({i - 1 + vec[0], j + vec[1]});
                             for (int v = 0; v < NofTheories / 5; v++) {
@@ -144,7 +148,7 @@ void run(int caseNumber, std::string caseName) {
                                         {getNorm(mask.rows, i - 1 + vec[0]), getNorm(mask.cols, j + vec[1])});
                             }
                         }
-                        if (j - 1 >= 0 && isPixelMasked(mask, i, j-1)) {
+                        if (j - 1 >= 0 && isPixelMasked(mask1, i, j-1)) {
                             Vec2i vec = shifts.at<Vec2i>(i, j - 1);
                             theories.push_back({i + vec[0], j - 1 + vec[1]});
                             for (int v = 0; v < NofTheories / 5; v++) {
@@ -152,7 +156,7 @@ void run(int caseNumber, std::string caseName) {
                                         {getNorm(mask.rows, i + vec[0]), getNorm(mask.cols, j - 1 + vec[1])});
                             }
                         }
-                        if (j + 1 < mask.cols && isPixelMasked(mask, i, j+1)) {
+                        if (j + 1 < mask.cols && isPixelMasked(mask1, i, j+1)) {
                             Vec2i vec = shifts.at<Vec2i>(i, j + 1);
                             theories.push_back({i + vec[0], j + 1 + vec[1]});
                             for (int v = 0; v < NofTheories / 5; v++) {
@@ -175,9 +179,11 @@ void run(int caseNumber, std::string caseName) {
                             for (int dj = -kernel; dj <= kernel; dj++) {
                                 if (i + di >= mask.rows || i + di < 0 || j + dj >= mask.cols || j + dj < 0)
                                     continue;
-                                else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0)
-                                    cur += emptyloss;
-                                else if (isPixelMasked(mask, x + di, y + dj))
+                                else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0){
+                                    if(isPixelMasked(mask, i + di, j + dj))
+                                        cur += (int)(rectrust*emptyloss);
+                                    else cur += emptyloss;
+                                }else if (isPixelMasked(mask, x + di, y + dj))
                                     cur = INT_MAX/2;
                                 else if (isPixelMasked(mask, i + di, j + dj)) {
                                     Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj);//recursively looking at link
@@ -194,7 +200,7 @@ void run(int caseNumber, std::string caseName) {
                                         recpos[1] = mask.cols-1;
                                     //</костыль>
                                     if (isPixelMasked(mask, recpos[0], recpos[1]))
-                                        cur += emptyloss;
+                                        cur += (int)(rectrust*emptyloss);
                                     else {
                                         Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
                                         Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
@@ -221,9 +227,11 @@ void run(int caseNumber, std::string caseName) {
                                 for (int dj = -kernel; dj <= kernel; dj++) {
                                     if (i + di >= mask.rows || i + di < 0 || j + dj >= mask.cols || j + dj < 0)
                                         continue;
-                                    else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0)
-                                        nw += emptyloss;
-                                    else if (isPixelMasked(mask, x + di, y + dj))
+                                    else if (x + di >= mask.rows || x + di < 0 || y + dj >= mask.cols || y + dj < 0){
+                                        if(isPixelMasked(mask, i + di, j + dj))
+                                            nw += (int)(rectrust*emptyloss);
+                                        else nw += emptyloss;
+                                    }else if (isPixelMasked(mask, x + di, y + dj))
                                         nw = INT_MAX/2;
                                     else if (isPixelMasked(mask, i + di, j + dj)) {
                                         Vec2i recpos = shifts.at<Vec2i>(i + di, j + dj);//recursively looking at link
@@ -240,7 +248,7 @@ void run(int caseNumber, std::string caseName) {
                                             recpos[1] = mask.cols-1;
                                         //</костыль>
                                         if (isPixelMasked(mask, recpos[0], recpos[1]))
-                                            nw += emptyloss;
+                                            nw += (int)(rectrust*emptyloss);
                                         else {
                                             Vec3b t1 = img.at<Vec3b>(recpos[0], recpos[1]);
                                             Vec3b t2 = img.at<Vec3b>(x + di, y + dj);
@@ -289,11 +297,11 @@ void run(int caseNumber, std::string caseName) {
 
 int main() {
     try {
-        run(1, "mic");
+        //run(1, "mic");
         run(2, "flowers");
-        run(3, "baloons");
-        run(4, "brickwall");
-        run(5, "old_photo");
+        //run(3, "baloons");
+        //run(4, "brickwall");
+        //run(5, "old_photo");
         //run(6, "your_data");
 
         return 0;

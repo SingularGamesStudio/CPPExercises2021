@@ -136,7 +136,6 @@ void run(int caseNumber, std::string caseName) {
         for(int iter = 0; iter<iters; iter++) {
             for (int i0 = 0; i0 < mask.rows; i0++) {
                 for (int j0 = 0; j0 < mask.cols; j0++) {
-
                     int i = i0;
                     int j = j0;
                     if (iter % 2){

@@ -48,8 +48,8 @@ void run(std::string caseName) {
     // 2) Свертка оператором Собеля (чтобы построить градиент в каждом пикселе) +
     // 3) Строим граф на базе всех всех пикселей +
     // 4) Сортируем ребра - разница в направлении градиентов смежных пикселей +
-    // 5) Проходя по ребрам по возрастанию - объединяем смежные компоненты если у них похожи диапазоны направлений и сил градиентов
-    // 6) Каждая компонента связности - отрезок
+    // 5) Проходя по ребрам по возрастанию - объединяем смежные компоненты если у них похожи диапазоны направлений и сил градиентов +
+    // 6) Каждая компонента связности - отрезок +
     // 7) Перебором пытаемся объединить эти отрезки в четырехугольник
 
     cv::Mat img = original.clone();
@@ -170,15 +170,13 @@ void run(std::string caseName) {
         GradientsCluster clusterA = clusters[clusterIndexA];
         GradientsCluster clusterB = clusters[clusterIndexB];
         GradientsCluster clusterSum = clusterA.plus(clusterB);
-        /* TODO реализуйте здесь объединение двух кластеров - посмотрите, может у класса GradientsCluster есть подходящий для этого метод? */
 
-        /* TODO реализуйте здесь формулы проверяющие можно ли объединить эти два кластера, т.е. можно ли использовать этот объединенный кластер */
-        bool directionOk = true;
-        bool magnitudeOk = true;
+        bool directionOk = clusterSum.rangeD()<(MIN_ALLOWED_DIRECTION_RANGE+KD/clusterSum.nPoints);
+        bool magnitudeOk = clusterSum.rangeM()<(MIN_ALLOWED_MAGNITUDE_RANGE+KM/clusterSum.nPoints);
         if (directionOk && magnitudeOk) {
             int unionIndex = disjoint_set.union_sets(clusterIndexA, clusterIndexB);
             rassert(unionIndex == clusterIndexA || unionIndex == clusterIndexB, 3847239700149);
-            /* clusters[unionIndex] = ...; */
+            clusters[unionIndex] = clusterSum;
         }
     }
     std::cout << "done in " << t.elapsed() << " s" << std::endl;
@@ -219,18 +217,17 @@ void run(std::string caseName) {
         int j = pixel.y;
 
         int clusterIndex = disjoint_set.get_set(vertex); // определили в каком кластере состоит этот пиксель
-
         if (clusters_colors.count(clusterIndex) == 0) { // если цвет для этого кластера еще не назначен
             if (clusters[clusterIndex].fromM == DISABLED_PIXELS_MAGNITUDE && clusters[clusterIndex].toM == DISABLED_PIXELS_MAGNITUDE) {
                 clusters_colors[clusterIndex] = cv::Vec3b(0, 0, 0); // если этот кластер состоит только из выключенных пикселей - пусть будет черным
             } else {
-                /* TODO визуализируйте все компоненты связности, если этот clusterIndex мы видим впервые - назначьте ему случайный цвет */
+                clusters_colors[clusterIndex] = cv::Vec3b(randomColorsGenerator.next(0, 180), randomColorsGenerator.next(0, 180), randomColorsGenerator.next(0, 180));
             }
             rassert(clusters_pixels.count(clusterIndex) == 0, 23847293473200227); // проверяем что раз цвет кластеру неназначен, то и пикселей у этого кластера пока не добавлено
             clusters_pixels[clusterIndex] = std::vector<cv::Point2i>();
         }
-        /* TODO используйте ранее назначенный этому кластеру цвет и покрасьте пиксель в этот цвет */
-        /* TODO а так же добавьте текущий пиксель в перечень пикселей данного кластера */
+        clustersVisualization.at<Vec3b>(j, i) = clusters_colors[clusterIndex];
+        clusters_pixels[clusterIndex].push_back(pixel);
     }
     cv::imwrite(resultsDir + "08clusters.png", clustersVisualization);
 
@@ -260,8 +257,16 @@ void run(std::string caseName) {
         clusters_start[clusterIndex] = start;
         clusters_finish[clusterIndex] = finish;
         if (pixels.size() > CLUSTER_NPOINTS_THRESHOLD) {
-            /* TODO нарисуйте отрезки для каждого кластера - от стартовой к конечной точке с цветом этого кластера */
-            /* TODO нарисуйте кружочек вокруг конца этого кластера - с цветом этого кластера, чтобы было понятно его направление */
+            cv::line(segmentsVisualization, start, finish, clusters_colors[clusterIndex]);
+            int i = finish.x;
+            int j = finish.y;
+            for (int di = -1; di<=1; di++){
+                for (int dj = -1; dj<=1; dj++){
+                    if(i+di<img.cols && i+di>=0 && j+dj<img.rows && j+dj>=0){
+                        segmentsVisualization.at<Vec3b>(j+dj, i+di) = clusters_colors[clusterIndex];
+                    }
+                }
+            }
 
             goodClusters.push_back(clusterIndex);
             ++goodSegments;
@@ -289,13 +294,17 @@ void run(std::string caseName) {
             cv::Point2i p12 = clusters_finish[cluster1]; // теперь мы ищем продолжение вокруг этой точки
 
             for (int cluster2: goodClusters) { // перебираем третью сторону четырехугольника
-                /* TODO сделайте проверку подошел ли нам рассматриваемый третий кластер */
-
+                cv::Point2i p2 = clusters_start[cluster2];
+                cv::Point2i p23 = clusters_finish[cluster2];
+                if (distance2(p12, p2) > QUADS_CORNERS_DISTANCE_THRESHOLD2 || cluster1 == cluster2 || cluster0 == cluster2)
+                    continue;
                 for (int cluster3: goodClusters) {
-                    /* TODO сделайте проверку подошел ли нам рассматриваемый четвертый кластер */
-
-                    /* TODO не забудьте добавить финальную проверку - оказался ли замкнут наш четырехугольник? */
-
+                    cv::Point2i p3 = clusters_start[cluster3];
+                    cv::Point2i p30 = clusters_finish[cluster3];
+                    if (distance2(p23, p3) > QUADS_CORNERS_DISTANCE_THRESHOLD2 || cluster3 == cluster2 || cluster3 == cluster1 || cluster3 == cluster0)
+                        continue;
+                    if(distance2(p30, p0) > QUADS_CORNERS_DISTANCE_THRESHOLD2)
+                        continue;
                     {
                         // если все хорошо - добавляем четверку кластеров в печеречень четырехугольников
                         std::vector<int> clusters_ids = {cluster0, cluster1, cluster2, cluster3};
@@ -305,12 +314,21 @@ void run(std::string caseName) {
             }
         }
     }
-    rassert(quadsClusters.size() % 4 == 0, 3472394328323); /* TODO почему это всегда верно? какие четырехугольники надо удалить а какие оставить? как это сделать? */
+
     std::cout << quadsClusters.size() << " quads found" << std::endl;
+    rassert(quadsClusters.size() % 4 == 0, 3472394328323);
     cv::Mat quadsVisualization = cv::Mat(img.rows, img.cols, CV_8UC3, cv::Scalar(0, 0, 0));
     for (int i = 0; i < quadsClusters.size(); ++i) {
-        /* TODO добавьте визуализацию, отрисуйте каждый четырехугольник - прочертив 4 отрезка - по его сторонам, и 4 отрезка - между концами и началами последовательных сторон */
-        /* TODO цветом четырехугольника пусть берется из цвета первого кластера который в этом четырехугольнике участвует */
+        Vec3b color = clusters_colors[quadsClusters[i][0]];
+        line(quadsVisualization, clusters_start[quadsClusters[i][0]], clusters_finish[quadsClusters[i][0]], color);
+        line(quadsVisualization, clusters_start[quadsClusters[i][1]], clusters_finish[quadsClusters[i][1]], color);
+        line(quadsVisualization, clusters_start[quadsClusters[i][2]], clusters_finish[quadsClusters[i][2]], color);
+        line(quadsVisualization, clusters_start[quadsClusters[i][3]], clusters_finish[quadsClusters[i][3]], color);
+
+        line(quadsVisualization, clusters_finish[quadsClusters[i][0]], clusters_start[quadsClusters[i][1]], color);
+        line(quadsVisualization, clusters_finish[quadsClusters[i][1]], clusters_start[quadsClusters[i][2]], color);
+        line(quadsVisualization, clusters_finish[quadsClusters[i][2]], clusters_start[quadsClusters[i][3]], color);
+        line(quadsVisualization, clusters_finish[quadsClusters[i][3]], clusters_start[quadsClusters[i][0]], color);
     }
     cv::imwrite(resultsDir + "10quads.png", quadsVisualization);
     /* TODO посмотрите на результаты, какие есть идеи как уменьшить число ложных срабатываний? попробуйте это сделать */
@@ -333,7 +351,6 @@ int main() {
         int nthreads = omp_thread_count();
         std::cout << "CPU on this computer has " << nthreads << " virtual threads" << std::endl;
 
-        run("00");
         run("01");
         run("02");
         run("03");
